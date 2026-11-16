@@ -38,7 +38,7 @@
   function pieces(len, startInBar) {
     const out = []; let left = len, pos = startInBar;
     while (left > 1e-6) {
-      let d = DUR.find(x => x <= left + 1e-6 && (x < 1 || Math.abs((pos % 1)) < 1e-6 || x <= 1 - (pos % 1) + 1e-6)) || 0.25;
+      const off = pos % 1; let d = DUR.find(x => x <= left + 1e-6 && (off < 1e-6 ? (x < 1 || x === 1 || x >= 1) && (x <= 1 || Math.abs(pos % 2) < 1e-6 || x <= 2 - (pos % 2) + 1e-6) : x <= 1 - off + 1e-6)) || 0.25;
       if (d > left) d = left;
       out.push(d); left -= d; pos += d;
     }

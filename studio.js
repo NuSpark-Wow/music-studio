@@ -17,7 +17,7 @@
         <label class="f adv">Time<select onchange="MS.a.ts(+this.value)"><option value="4" ${s.ts === 4 ? 'selected' : ''}>4/4</option><option value="3" ${s.ts === 3 ? 'selected' : ''}>3/4</option></select></label>
         <label class="f" style="min-width:180px">Tempo <b style="color:var(--ink)" id="tempoV">${s.tempo} BPM</b><input type="range" min="40" max="200" value="${s.tempo}" oninput="document.getElementById('tempoV').textContent=this.value+' BPM'" onchange="MS.change(x=>x.tempo=+this.value,{quiet:true})"></label>
         <button class="btn sm mod" onclick="MS.a.tapTempo()" title="Tap 4 times at the speed you want">Tap tempo</button>${MS.helpBtn('keytempo')}${MS.helpBtn('studio', '? How the studio works')}</div>
-        <div class="row"><button class="btn vocal" onclick="MS.go('vocal')">🎤 Vocal Room</button><button class="btn" style="border-color:#4a6a8a;background:#1a2433" onclick="MS.go('control')">🎚 Control Room</button><button class="btn mod" onclick="MS.go('restyle')">Restyle</button><button class="btn primary" onclick="MS.go('save')">Save and download</button></div>
+        <div class="row"><button class="btn vocal" onclick="MS.go('vocal')">🎤 Vocal Room</button><button class="btn" style="border-color:#4a6a8a;background:#1a2433" onclick="MS.go('control')">🎚 Control Room</button><button class="btn mod" onclick="MS.a.scan()">📷 Scan sheet music</button><button class="btn mod" onclick="MS.go('restyle')">Restyle</button><button class="btn primary" onclick="MS.go('save')">Save and download</button></div>
       </div>
       ${songMap()}
       <div class="split" style="margin-top:12px"><div class="main">

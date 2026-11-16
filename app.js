@@ -52,15 +52,35 @@
   // ---------- state ----------
   const S = MS.S = { song: null, level: 'Moderate', paper: 'white', screen: 'home', arg: null, sec: null, part: null, sel: null, len: 1, hist: [], fut: [], agreed: false, view: {} };
   MS.vbuf = null; // recorded lead vocal (AudioBuffer)
-  const LS = 'musicstudio.v1';
+  // My Songs: every song is kept on this device in a small library; the open song saves itself on every change
+  const LS = 'musicstudio.v1', LIB = 'musicstudio.lib';
+  MS.lib = { songs: {}, cur: null };
+  function writeLib() { try { localStorage.setItem(LIB, JSON.stringify(MS.lib)); return true; } catch (e) { MS.toast('This device is out of room for songs. Download a song file and delete an old song.'); return false; } }
   function persist() {
-    try { localStorage.setItem(LS, JSON.stringify({ song: S.song, level: S.level, paper: S.paper, agreed: S.agreed })); } catch (e) { }
+    try { localStorage.setItem(LS, JSON.stringify({ level: S.level, paper: S.paper, agreed: S.agreed })); } catch (e) { }
+    if (S.song) { if (!S.song.id) S.song.id = MS.id('song'); MS.lib.songs[S.song.id] = { song: S.song, updated: Date.now() }; MS.lib.cur = S.song.id; }
+    if (writeLib()) { S.savedAt = Date.now(); const el = document.getElementById('savedNote'); if (el) el.textContent = 'Saved ✓'; }
   }
   let saveT = null;
-  MS.save = () => { clearTimeout(saveT); saveT = setTimeout(persist, 300); };
+  MS.save = () => { clearTimeout(saveT); const el = document.getElementById('savedNote'); if (el) el.textContent = 'Saving…'; saveT = setTimeout(persist, 300); };
   MS.load = function () {
-    try { const d = JSON.parse(localStorage.getItem(LS) || 'null'); if (d && d.song && d.song.parts) { S.song = fixSong(d.song); S.level = d.level || S.level; S.paper = d.paper || 'white'; S.agreed = !!d.agreed; return true; } } catch (e) { }
+    try {
+      const d = JSON.parse(localStorage.getItem(LS) || 'null') || {};
+      S.level = d.level || S.level; S.paper = d.paper || 'white'; S.agreed = !!d.agreed;
+      const lib = JSON.parse(localStorage.getItem(LIB) || 'null'); if (lib && lib.songs) MS.lib = lib;
+      if (d.song && d.song.parts) { const old = fixSong(d.song); old.id = old.id || MS.id('song'); MS.lib.songs[old.id] = { song: old, updated: Date.now() }; MS.lib.cur = old.id; delete d.song; localStorage.setItem(LS, JSON.stringify(d)); writeLib(); }
+      const c = MS.lib.cur && MS.lib.songs[MS.lib.cur];
+      if (c) { S.song = fixSong(c.song); return true; }
+    } catch (e) { }
     return false;
+  };
+  MS.songList = () => Object.values(MS.lib.songs).sort((a, b) => b.updated - a.updated);
+  // open a song from My Songs (or a new one); its own recorded vocal comes with it
+  MS.openSong = function (s, opts) {
+    A().stop(); persist();
+    s = fixSong(JSON.parse(JSON.stringify(s))); if (!s.id || (opts && opts.copy)) s.id = MS.id('song');
+    S.song = s; S.sec = s.sections[0] && s.sections[0].id; S.part = s.parts[0] && s.parts[0].id; S.sel = null; S.hist = []; S.fut = [];
+    MS.vbuf = null; persist(); if (MS.loadVocal) MS.loadVocal();
   };
   function fixSong(s) {
     const b = MS.blankSong();
@@ -73,7 +93,7 @@
     return s;
   }
   MS.fixSong = fixSong;
-  MS.setSong = function (s) { S.song = fixSong(s); S.sec = s.sections[0] && s.sections[0].id; S.part = s.parts[0] && s.parts[0].id; S.sel = null; S.hist = []; S.fut = []; MS.save(); };
+  MS.setSong = function (s) { MS.openSong(s); };
   MS.sec = () => S.song.sections.find(x => x.id === S.sec) || S.song.sections[0];
   MS.part = () => S.song.parts.find(x => x.id === S.part) || S.song.parts[0];
   MS.notesOf = (p, secId) => (p.notes[secId || MS.sec().id] = p.notes[secId || MS.sec().id] || []);
@@ -118,7 +138,7 @@
   MS.header = function () {
     const lv = ['Basic', 'Moderate', 'Advanced'].map(l => `<button type="button" class="pill amber ${l === S.level ? 'on' : ''}" aria-pressed="${l === S.level}" onclick="MS.a.level('${l}')">${l}</button>`).join('');
     const pp = ['White', 'Dark'].map(p => `<button type="button" class="pill ${p.toLowerCase() === S.paper ? 'on' : ''}" style="${p === 'White' && S.paper === 'white' ? 'background:#fbfaf6;color:#111;border-color:#fbfaf6' : ''}" aria-pressed="${p.toLowerCase() === S.paper}" onclick="MS.a.paper('${p.toLowerCase()}')">${p}</button>`).join('');
-    return `<div class="header"><button type="button" class="brand" onclick="MS.go('home')"><b>The Music Studio</b><span>Sing it. See it. Hear it.</span></button>
+    return `<div class="header"><div class="row" style="gap:10px"><button type="button" class="brand" onclick="MS.go('home')"><b>The Music Studio</b><span>Sing it. See it. Hear it.</span></button>${S.song && S.screen !== 'home' ? `<button class="btn sm ghost" onclick="MS.go('home')" title="Your songs are saved on this device. Tap for My Songs."><span id="savedNote" style="color:var(--teal)">Saved ✓</span>&nbsp;· My Songs</button>` : ''}</div>
     <div class="row"><span class="level">Paper</span>${pp}${MS.helpBtn('paper', '?')}</div>
     <div class="row" role="group" aria-label="Music knowledge level"><span class="level">Level</span>${lv}${MS.helpBtn('level', '?')}</div>
     <div class="row" style="gap:6px"><button class="btn sm" onclick="MS.go('words')">📖 Studio Talk</button>${MS.helpBtn('rooms', '? Help')}</div></div>`;
@@ -160,7 +180,9 @@
       return MS.banner() + `<div class="split"><div class="main">
       <div class="card col"><h1 style="font-size:32px">Make your own music</h1>
       <p style="margin:0;font-size:16px;color:#ddd8cc;max-width:720px">Write notes on a staff, or sing a few notes and watch them appear. Add harmony, chords, drums and instruments from a solo violin to a full orchestra. Write lyrics with an AI helper, record your voice, add background singers, then download your sheet music and an MP3.</p>
-      <div class="row" style="margin-top:4px">${has ? `<button class="btn primary" onclick="MS.go('studio')">Continue “${esc(S.song.title)}”</button>` : ''}<button class="btn ${has ? '' : 'primary'}" onclick="MS.a.newSong()">Start a new song</button><button class="btn" onclick="MS.a.openFile()">Open a saved song</button></div></div>
+      <div class="row" style="margin-top:4px">${has ? `<button class="btn primary" onclick="MS.go('studio')">Continue “${esc(S.song.title)}”</button>` : ''}<button class="btn ${has ? '' : 'primary'}" onclick="MS.a.newSong()">Start a new song</button><button class="btn" onclick="MS.a.scan()">📷 Scan sheet music</button><button class="btn" onclick="MS.a.openFile()">Open a song file</button></div>
+      <div class="tiny muted">Just want to arrange? Scan a page from a fakebook and the melody and chords come in ready to work with.</div></div>
+      ${MS.myShelf()}
       ${MS.roomsHtml()}
       <div class="card col"><div class="label">Pick your level</div><div class="small muted">You can change it anytime at the top.</div>
       <div class="grid">${[['Basic', 'New to music. Note names shown, big Sing button, simple choices.'], ['Moderate', 'Know a little. Chords, harmony, effects and the song map.'], ['Advanced', 'Read music. Full mixer, dynamics, sharps and flats, dotted notes.']].map(([l, d]) => `<button class="opt lesson-card ${S.level === l ? 'on' : ''}" onclick="MS.a.level('${l}')"><b style="font-size:17px">${l}</b><span class="small" style="color:#ddd8cc">${d}</span></button>`).join('')}</div></div>
@@ -174,16 +196,30 @@
   };
   MS.a.agree = v => { S.agreed = v; MS.save(); };
   MS.a.newSong = function () {
-    if (S.song && S.song.parts.some(p => Object.values(p.notes).some(a => a.length)) && !confirm('Start a new song? Your current song will be replaced. (Download it first from Save if you want to keep it.)')) return;
-    MS.setSong(MS.blankSong()); MS.vbuf = null; MS.go('studio');
+    const s = MS.blankSong(); s.title = 'Song ' + (MS.songList().length + 1);
+    MS.openSong(s); MS.go('studio'); MS.toast('New song started. Your other songs are safe in My Songs.');
   };
-  MS.a.classic = function (k) {
-    if (S.song && S.song.parts.some(p => Object.values(p.notes).some(a => a.length)) && !confirm('Replace your current song with “' + k + '”?')) return;
-    MS.setSong(MS.fromClassic(k)); MS.vbuf = null; MS.go('studio');
+  MS.a.classic = function (k) { MS.openSong(MS.fromClassic(k)); MS.go('studio'); };
+  MS.a.openLib = id => { const e = MS.lib.songs[id]; if (e) { MS.openSong(e.song); MS.go('studio'); MS.toast('Opened “' + e.song.title + '”'); } };
+  MS.a.copyLib = id => { const e = MS.lib.songs[id]; if (!e) return; const c = JSON.parse(JSON.stringify(e.song)); c.title = e.song.title + ' (copy)'; delete c.parentId; MS.openSong(c, { copy: true }); MS.render(); MS.toast('Copy made and opened.'); };
+  MS.a.delLib = function (id) {
+    const e = MS.lib.songs[id]; if (!e || !confirm('Delete “' + e.song.title + '” from this device? (Download its song file first if you want a backup.)')) return;
+    delete MS.lib.songs[id]; if (MS.delVocal) MS.delVocal(id);
+    if (S.song && S.song.id === id) { const next = MS.songList()[0]; if (next) MS.openSong(next.song); else { S.song = null; MS.lib.cur = null; } }
+    writeLib(); MS.render();
+  };
+  MS.a.dlLib = id => { const e = MS.lib.songs[id]; if (e) download(new Blob([JSON.stringify(e.song, null, 1)], { type: 'application/json' }), (e.song.title || 'song').replace(/[^\w\- ]+/g, '').trim().replace(/\s+/g, '-').toLowerCase() + '.json'); };
+  MS.myShelf = function () {
+    const list = MS.songList(); if (!list.length) return '';
+    const when = t => { const d = (Date.now() - t) / 60000; return d < 1 ? 'just now' : d < 60 ? Math.round(d) + ' min ago' : d < 1440 ? Math.round(d / 60) + ' hr ago' : new Date(t).toLocaleDateString(); };
+    return `<div class="card col"><div class="row" style="justify-content:space-between"><div class="label">My Songs <span class="muted" style="text-transform:none;letter-spacing:0">(${list.length} on this device)</span></div><div class="row" style="gap:6px"><button class="btn sm" onclick="MS.a.openFile()">Open a song file</button>${MS.helpBtn('mysongs')}</div></div>
+      <div class="col" style="gap:8px">${list.map(e => { const x = e.song, cur = S.song && S.song.id === x.id; return `<div class="row" style="justify-content:space-between;gap:8px;padding:10px;border:1px solid ${cur ? 'var(--amber)' : 'var(--line)'};border-radius:10px;background:var(--panel2)"><div style="min-width:0"><b>${esc(x.title)}</b>${cur ? ' <span class="tiny" style="color:var(--amber)">open now</span>' : ''}<div class="tiny muted">${x.style ? esc(x.style) + ' · ' : ''}${x.sections.length} section${x.sections.length === 1 ? "" : "s"} · ${x.tempo} BPM · saved ${when(e.updated)}${x.parentId ? ' · a restyled version' : ''}</div></div>
+        <div class="row" style="gap:6px">${cur ? `<button class="btn sm primary" onclick="MS.go('studio')">Continue</button>` : `<button class="btn sm primary" onclick="MS.a.openLib('${x.id}')">Open</button>`}<button class="btn sm" onclick="MS.a.copyLib('${x.id}')">Copy</button><button class="btn sm" onclick="MS.a.dlLib('${x.id}')" aria-label="Download song file">Download</button><button class="btn sm ghost" onclick="MS.a.delLib('${x.id}')" aria-label="Delete">✕</button></div></div>`; }).join('')}</div>
+      <div class="tiny muted">Songs save on this device as you work. To move a song to another device, Download it and use “Open a song file” there.</div></div>`;
   };
   MS.a.openFile = function () {
     const i = document.createElement('input'); i.type = 'file'; i.accept = '.json,.musicstudio,application/json';
-    i.onchange = () => { const f = i.files[0]; if (!f) return; f.text().then(t => { try { const d = JSON.parse(t); if (!d.parts || !d.sections) throw 0; MS.setSong(d); MS.vbuf = null; MS.go('studio'); MS.toast('Opened “' + d.title + '”'); } catch (e) { MS.toast('That file is not a Music Studio song.'); } }); };
+    i.onchange = () => { const f = i.files[0]; if (!f) return; f.text().then(t => { try { const d = JSON.parse(t); if (!d.parts || !d.sections) throw 0; const exists = d.id && MS.lib.songs[d.id]; MS.openSong(d, { copy: !!exists }); MS.go('studio'); MS.toast('Opened “' + d.title + '” and added it to My Songs'); } catch (e) { MS.toast('That file is not a Music Studio song.'); } }); };
     i.click();
   };
 
@@ -246,34 +282,83 @@
     'Soft ballad': { tempo: 70, mel: ['Grand piano', 'solo'], har: ['Violins', 'section'], bass: 'Bass guitar', drums: 'Soft ballad', chords: ['Grand piano', 'Arpeggio'], bassStyle: 'whole', echo: 0.1, rev: 0.45, d: 'Gentle piano and strings.' },
     'March': { tempo: 116, mel: ['Trumpet', 'section'], har: ['French horn', 'section'], bass: 'Tuba', drums: 'March', chords: ['Trombone', 'Block'], bassStyle: 'pop', echo: 0, rev: 0.3, d: 'Brass band with snare drums.' }
   };
-  MS.applyStyle = function (song, name) {
+  // three sub-styles under each style: each changes the background layers and a few sounds
+  const L = (preset, vol, extra) => Object.assign({ preset, vol: vol || 0.55 }, extra || {});
+  MS.SUBSTYLES = {
+    'Pop': { 'Bright piano pop': { layers: [L('Piano arpeggio', 0.45)] }, 'Synth pop': { layers: [L('Synth pulse', 0.5)], mel: ['Electric piano', 'solo'], har: ['Synth', 'solo'] }, 'Acoustic pop': { layers: [L('Guitar strum', 0.6)], mel: ['Acoustic guitar', 'solo'], chordsOff: true } },
+    'R&B': { 'Smooth keys': { layers: [L('Electric piano', 0.5)] }, 'Organ soul': { layers: [L('Organ pad', 0.75)], chordsOff: true }, 'Silky strings': { layers: [L('String pad', 0.6)] } },
+    'Rock': { 'Organ-heavy rock': { layers: [L('Organ pad', 0.85), L('Guitar strum', 0.4)] }, 'Guitar wall': { layers: [L('Guitar strum', 0.7)], chords: ['Electric guitar', 'Strum'] }, 'Piano rock': { layers: [L('Piano arpeggio', 0.55)], mel: ['Grand piano', 'solo'] } },
+    'Jazz swing': { 'Big band brass': { layers: [L('Brass swells', 0.6)] }, 'Piano trio': { layers: [], chords: ['Grand piano', 'Block'] }, 'Organ jazz': { layers: [L('Organ pad', 0.65)], chordsOff: true } },
+    'Classical': { 'String quartet': { layers: [L('String pad', 0.5, { size: 'Small (4)' })], chordsOff: true }, 'Harp and flute': { layers: [L('Harp arpeggio', 0.55)], mel: ['Flute', 'solo'], chordsOff: true }, 'Choir and organ': { layers: [L('Choir ooh', 0.55), L('Organ pad', 0.5)], chordsOff: true } },
+    'Full orchestra': { 'Epic brass': { layers: [L('Brass swells', 0.75), L('Low drone', 0.6)] }, 'Lush strings': { layers: [L('String pad', 0.7, { size: 'Full orchestra (30)' })] }, 'Movie magic': { layers: [L('Harp arpeggio', 0.5), L('Choir ooh', 0.5), L('String pad', 0.55)] } },
+    'Country': { 'Fiddle and strum': { layers: [L('Guitar strum', 0.6)], chordsOff: true }, 'Honky-tonk piano': { layers: [L('Piano arpeggio', 0.55)], chords: ['Grand piano', 'Block'] }, 'Country organ': { layers: [L('Organ pad', 0.6), L('Guitar strum', 0.45)], chordsOff: true } },
+    'Hip-hop': { 'Lo-fi keys': { layers: [L('Electric piano', 0.55)], tempo: -8 }, 'Synth bounce': { layers: [L('Synth pulse', 0.5)] }, 'Soul sample': { layers: [L('Organ pad', 0.55), L('String pad', 0.45)] } },
+    'Soft ballad': { 'Piano and strings': { layers: [L('String pad', 0.55)] }, 'Acoustic': { layers: [L('Guitar strum', 0.55)], mel: ['Acoustic guitar', 'solo'], chordsOff: true }, 'Choir glow': { layers: [L('Choir ooh', 0.55)] } },
+    'March': { 'Brass band': { layers: [L('Brass swells', 0.6)] }, 'Fife and drum': { layers: [], mel: ['Flute', 'section'], chordsOff: true }, 'Grand parade': { layers: [L('Brass swells', 0.7), L('Low drone', 0.55)] } }
+  };
+  MS.applyStyle = function (song, name, subName) {
     const st = MS.STYLES[name]; if (!st) return;
-    song.tempo = st.tempo;
-    const mel = song.parts.find(p => p.role === 'melody'); if (mel) Object.assign(mel, { inst: st.mel[0], ens: st.mel[1], echo: st.echo, rev: st.rev });
-    let har = song.parts.find(p => p.role === 'harmony');
-    if (har) Object.assign(har, { inst: st.har[0], ens: st.har[1], size: st.har[2] || 'Chamber (12)', rev: st.rev + 0.05 });
+    const sub = subName && MS.SUBSTYLES[name] && MS.SUBSTYLES[name][subName];
+    song.tempo = Math.max(40, st.tempo + ((sub && sub.tempo) || 0));
+    const mel = song.parts.find(p => p.role === 'melody'), m = (sub && sub.mel) || st.mel;
+    if (mel) Object.assign(mel, { inst: m[0], ens: m[1], echo: st.echo, rev: st.rev });
+    let har = song.parts.find(p => p.role === 'harmony'), h = (sub && sub.har) || st.har;
+    if (har) Object.assign(har, { inst: h[0], ens: h[1], size: h[2] || 'Chamber (12)', rev: st.rev + 0.05 });
     song.sections.forEach(s => { if (!song.chords[s.id] || !song.chords[s.id].some(Boolean)) song.chords[s.id] = MS.suggestChords(song, s.id); });
     const b = MS.makeBass(song, null, st.bassStyle); Object.assign(b, { inst: st.bass, ens: A().INST[st.bass].ens ? 'section' : 'solo', artic: st.bassArtic || 'legato' });
     if (song.ts === 3 && /Pop|Rock|Country|Hip|R&B/.test(st.drums)) song.drums.style = 'Waltz'; else song.drums.style = st.drums;
-    Object.assign(song.chordPart, { on: true, inst: st.chords[0], style: st.chords[1], ens: A().INST[st.chords[0]].ens ? 'section' : 'solo', rev: st.rev });
-    song.style = name;
+    const c = (sub && sub.chords) || st.chords;
+    Object.assign(song.chordPart, { on: !(sub && sub.chordsOff), inst: c[0], style: c[1], ens: A().INST[c[0]].ens ? 'section' : 'solo', rev: st.rev });
+    song.layers = [];
+    if (sub && MS.addLayer) sub.layers.forEach(x => { const ly = MS.addLayer(song, x.preset); if (ly) { ly.vol = x.vol; if (x.size) ly.size = x.size; ly.rev = st.rev; } });
+    song.style = name + (subName ? ' · ' + subName : '');
   };
+  // Restyle works on a preview copy: the original stays untouched until you save a version
+  let pv = null; // { song, style, sub }
+  const rootOf = s => s.parentId || s.id;
   MS.screens.restyle = {
     html() {
       const s = S.song; if (!s) return MS.screens.home.html();
+      const root = rootOf(s), fam = MS.songList().filter(e => e.song.id === root || e.song.parentId === root);
+      const isP = (k, sb) => pv && pv.style === k && pv.sub === sb;
       return `<div class="row small muted" style="margin-bottom:10px"><a href="#" onclick="MS.go('studio');return false">Studio</a><span>›</span><span style="color:var(--ink)">Restyle</span></div>
-      <div class="split"><div class="main"><div class="card col"><div class="row" style="justify-content:space-between"><h2>Restyle “${esc(s.title)}”</h2>${MS.helpBtn('restyle')}</div><div class="small" style="color:#ddd8cc">Keep your melody, change everything around it: tempo, instruments, chords, bass and drums. Try a few. Undo goes back.</div>
-      <div class="grid">${Object.entries(MS.STYLES).map(([k, v]) => `<div class="opt ${s.style === k ? 'on' : ''}"><b style="font-size:16px">${k}</b><span class="small" style="color:#ddd8cc">${v.d}</span><span class="tiny muted">${v.tempo} BPM · ${v.mel[0]}${v.mel[1] === 'section' ? ' section' : ''}</span><div class="row"><button class="btn sm ${s.style === k ? 'primary' : ''}" onclick="MS.a.restyle(${esc(JSON.stringify(k))})">${s.style === k ? 'Applied' : 'Use this style'}</button></div></div>`).join('')}</div></div></div>
-      <div class="side"><div class="card col"><div class="label">Listen</div><div class="row"><button class="btn primary" onclick="MS.a.playSong()">Play song</button><button class="btn" onclick="MSA.stop()">Stop</button><button class="btn" onclick="MS.undo()">Undo</button></div><button class="btn" onclick="MS.go('studio')">Back to the studio</button></div>
-      <div class="card col"><div class="label">Someone else's song?</div><div class="small" style="color:#ddd8cc">Type or sing the melody into the studio, then restyle it here. A modern 1812 Overture or an R&amp;B version of a favorite song is fine for your own enjoyment.</div>
+      <div class="split"><div class="main"><div class="card col"><div class="row" style="justify-content:space-between"><h2>Restyle “${esc(s.title)}”</h2>${MS.helpBtn('restyle')}</div>
+      <div class="small" style="color:#ddd8cc">Pick a style, then one of its three flavors. Each flavor changes the background music too: rock heavy on the organ, classical with harp and flute. Listen to as many as you like. Your original never changes unless you save a version.</div>
+      <div class="grid">${Object.entries(MS.STYLES).map(([k, v]) => `<div class="opt ${pv && pv.style === k ? 'on' : ''}"><b style="font-size:16px">${k}</b><span class="small" style="color:#ddd8cc">${v.d}</span><span class="tiny muted">${v.tempo} BPM · ${v.mel[0]}${v.mel[1] === 'section' ? ' section' : ''}</span>
+        <div class="col" style="gap:6px">${Object.keys(MS.SUBSTYLES[k]).map(sb => `<button class="btn sm ${isP(k, sb) ? 'primary' : ''}" style="flex-direction:column;align-items:flex-start;gap:2px;white-space:normal;text-align:left;padding:8px 12px" onclick="MS.a.preview(${esc(JSON.stringify(k))},${esc(JSON.stringify(sb))})"><span>${isP(k, sb) ? '▶ ' : ''}${esc(sb)}</span><span class="tiny" style="opacity:.75;font-weight:500">${esc(MS.SUBSTYLES[k][sb].layers.map(x => x.preset).join(' + ') || 'no extra layers')}</span></button>`).join('')}</div></div>`).join('')}</div></div></div>
+      <div class="side">
+      <div class="card col" style="${pv ? 'border-color:var(--amber)' : ''}"><div class="label">${pv ? 'Now hearing' : 'Listen'}</div>
+        ${pv ? `<div><b style="font-size:17px">${esc(pv.style)} · ${esc(pv.sub)}</b><div class="tiny muted">${pv.song.tempo} BPM · ${esc(pv.song.parts[0].inst)} melody${pv.song.layers.length ? ' · ' + esc(pv.song.layers.map(x => x.name).join(', ')) : ''}</div></div>
+        <div class="row"><button class="btn" onclick="MS.a.playPv()">▶ Play again</button><button class="btn" onclick="MSA.stop()">■ Stop</button></div>
+        <button class="btn primary" onclick="MS.a.saveVersion(false)">Save this version</button><button class="btn" onclick="MS.a.saveVersion(true)">Save it and open it in the studio</button><button class="btn ghost" onclick="MS.a.keepOrig()">Keep my original</button>
+        <div class="tiny muted">A saved version goes into My Songs next to your original, so you can move either one to any room.</div>`
+        : `<div class="row"><button class="btn primary" onclick="MS.a.playSong()">▶ Play the original</button><button class="btn" onclick="MSA.stop()">■</button></div><div class="tiny muted">Tap any flavor to hear it.</div>`}</div>
+      ${fam.length > 1 ? `<div class="card col"><div class="label">Versions of this song</div>${fam.map(e => `<div class="row" style="justify-content:space-between;gap:6px"><div style="min-width:0"><b class="small">${esc(e.song.id === root ? 'Original' : (e.song.style || e.song.title))}</b>${e.song.id === s.id ? ' <span class="tiny" style="color:var(--amber)">open now</span>' : ''}</div>${e.song.id === s.id ? '' : `<button class="btn sm" onclick="MS.a.openVersion('${e.song.id}')">Open</button>`}</div>`).join('')}<div class="tiny muted">Open any version to keep working on it in the studio, Vocal Room or Control Room.</div></div>` : ''}
+      <div class="card col"><div class="label">Someone else's song?</div><div class="row"><button class="btn sm" onclick="MS.a.scan()">📷 Scan sheet music</button></div><div class="small" style="color:#ddd8cc">Scan a page, or type or sing the melody into the studio, then restyle it here. A modern 1812 Overture or an R&amp;B version of a favorite song is fine for your own enjoyment.</div>
       <label class="row small" style="align-items:flex-start;gap:10px"><input type="checkbox" ${s.source === 'other' ? 'checked' : ''} onchange="MS.a.source(this.checked)"><span>This song was written by someone else.</span></label>
       ${s.source === 'other' && !S.agreed ? `<label class="row small" style="align-items:flex-start;gap:10px"><input type="checkbox" onchange="MS.a.agree(this.checked);MS.render()"><span>It's for my own enjoyment. I won't post it publicly or sell it.</span></label>` : ''}
       ${s.source === 'other' ? '<div class="tiny muted">Downloads will be marked “Personal use only”.</div>' : ''}</div></div></div>` + MS.footer();
     }
   };
-  MS.a.restyle = function (k) {
+  MS.a.preview = function (k, sb) {
     if (S.song.source === 'other' && !S.agreed) return MS.toast('Check the personal-use box first.');
-    MS.change(s => MS.applyStyle(s, k)); MS.toast(k + ' style applied. Press Play.'); MS.a.playSong();
+    const c = fixSong(JSON.parse(JSON.stringify(S.song))); MS.applyStyle(c, k, sb);
+    pv = { song: c, style: k, sub: sb }; MS.render(); MS.a.playPv();
+  };
+  MS.a.playPv = () => { if (pv) A().play(Object.assign({}, pv.song, { vocals: Object.assign({}, pv.song.vocals, { leadBuffer: MS.vbuf }) })); };
+  MS.a.keepOrig = () => { pv = null; A().stop(); MS.render(); MS.toast('Your original is unchanged.'); };
+  MS.a.saveVersion = function (open) {
+    if (!pv) return; const orig = S.song, v = JSON.parse(JSON.stringify(pv.song));
+    v.id = MS.id('song'); v.parentId = rootOf(orig); v.title = orig.title.replace(/ \([^)]*\)$/, '') + ' (' + pv.sub + ')';
+    MS.lib.songs[v.id] = { song: fixSong(v), updated: Date.now() }; writeLib();
+    pv = null; A().stop();
+    if (open) { MS.openSong(v); MS.go('studio'); MS.toast('Saved and opened “' + v.title + '”. Your original is in My Songs.'); }
+    else { MS.render(); MS.toast('Saved “' + v.title + '” to My Songs. Keep exploring.'); }
+  };
+  MS.a.openVersion = id => { pv = null; const e = MS.lib.songs[id]; if (e) { MS.openSong(e.song); MS.render(); MS.toast('Opened “' + e.song.title + '”'); } };
+  MS.a.restyle = function (k, sb) { // used by the suggestions bar: applies straight to the open song (Undo available)
+    if (S.song.source === 'other' && !S.agreed) return MS.toast('Check the personal-use box first.');
+    MS.change(s => MS.applyStyle(s, k, sb)); MS.toast(k + ' style applied. Press Play.'); MS.a.playSong();
   };
   MS.a.source = v => MS.change(s => { s.source = v ? 'other' : 'mine'; });
   MS.a.playSong = function () { A().play(MS.playable()); };
@@ -292,7 +377,7 @@
       <div class="opt"><b>Sheet music (PDF)</b><span class="small" style="color:#ddd8cc">Every part on music paper, with your title, your name, chords and lyrics. In the print window, choose “Save as PDF”.</span><button class="btn primary" onclick="MS.a.printSheet()">Download sheet music</button></div>
       <div class="opt"><b>MP3</b><span class="small" style="color:#ddd8cc">The whole song with instruments, drums, background singers and your recorded voice.</span><button class="btn primary" id="mp3btn" onclick="MS.a.mp3()">Download MP3</button><div class="meter" id="mp3m" hidden><i></i></div></div>
       <div class="opt"><b>WAV</b><span class="small" style="color:#ddd8cc">Same as MP3, full quality, bigger file.</span><button class="btn" onclick="MS.a.wav()">Download WAV</button></div>
-      <div class="opt"><b>Song file</b><span class="small" style="color:#ddd8cc">Save your project and open it again later on any device. (Recorded vocals aren't included; keep the MP3 for those.)</span><div class="row"><button class="btn" onclick="MS.a.saveFile()">Save song file</button><button class="btn" onclick="MS.a.openFile()">Open</button></div></div>
+      <div class="opt"><b>Song file</b><span class="small" style="color:#ddd8cc">A backup of this song you can open on any device with “Open a song file”. (Recorded vocals aren't included; keep the MP3 for those.)</span><div class="row"><button class="btn" onclick="MS.a.saveFile()">Download song file</button><button class="btn" onclick="MS.a.openFile()">Open a song file</button></div></div>
       </div></div>
       <div class="side"><div class="card col"><div class="label">Your song</div><div class="small">${s.sections.length} sections · ${A().timeline(s).total / s.ts} bars · ${s.tempo} BPM · ${esc(s.key)}</div><div class="small muted">About ${Math.round(A().timeline(s).total * 60 / s.tempo)} seconds long.</div><button class="btn" onclick="MS.a.playSong()">Play it</button><button class="btn" onclick="MS.go('studio')">Back to the studio</button></div></div></div>` + MS.footer('MP3 and WAV files are made right on your device. Nothing is uploaded.');
     }

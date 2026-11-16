@@ -133,12 +133,17 @@
   // keep the recording on this device between visits (IndexedDB)
   function idb() { return new Promise((res, rej) => { const r = indexedDB.open('musicstudio', 1); r.onupgradeneeded = () => r.result.createObjectStore('v'); r.onsuccess = () => res(r.result); r.onerror = rej; }); }
   async function saveVocal() {
-    try { const db = await idb(), tx = db.transaction('v', 'readwrite'); if (MS.vbuf) tx.objectStore('v').put({ sr: MS.vbuf.sampleRate, data: MS.vbuf.getChannelData(0).slice() }, 'lead'); else tx.objectStore('v').delete('lead'); } catch (e) { }
+    try { const db = await idb(), tx = db.transaction('v', 'readwrite'); const k = 'lead:' + (S.song && S.song.id); if (MS.vbuf) tx.objectStore('v').put({ sr: MS.vbuf.sampleRate, data: MS.vbuf.getChannelData(0).slice() }, k); else tx.objectStore('v').delete(k); } catch (e) { }
   }
+  MS.delVocal = async function (id) { try { const db = await idb(); db.transaction('v', 'readwrite').objectStore('v').delete('lead:' + id); } catch (e) { } };
   MS.loadVocal = async function () {
     try {
-      const db = await idb(), r = db.transaction('v').objectStore('v').get('lead');
-      r.onsuccess = () => { const v = r.result; if (!v || !S.song) return; const ctx = A().ctx(); const b = ctx.createBuffer(1, v.data.length, v.sr); b.getChannelData(0).set(v.data); MS.vbuf = b; if (S.screen === 'vocal') MS.render(); };
+      const id = S.song && S.song.id; if (!id) return;
+      const db = await idb(), st = db.transaction('v', 'readwrite').objectStore('v');
+      // one-time move of an older single recording onto the open song
+      const old = st.get('lead'); old.onsuccess = () => { if (old.result) { st.put(old.result, 'lead:' + id); st.delete('lead'); } };
+      const r = st.get('lead:' + id);
+      r.onsuccess = () => { const v = r.result || old.result; if (!v || !S.song || S.song.id !== id) return; const ctx = A().ctx(); const b = ctx.createBuffer(1, v.data.length, v.sr); b.getChannelData(0).set(v.data); MS.vbuf = b; if (S.screen === 'vocal') MS.render(); };
     } catch (e) { }
   };
 
