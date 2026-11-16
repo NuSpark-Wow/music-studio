@@ -79,7 +79,8 @@ const SUGGEST_TOOL = {
               properties: {
                 type: { type: "string" }, value: { type: "number" }, part: { type: "string" }, inst: { type: "string" }, ens: { type: "string" }, size: { type: "string" }, artic: { type: "string" },
                 kind: { type: "string" }, all: { type: "boolean" }, style: { type: "string" }, section: { type: "string" }, from: { type: "string" }, name: { type: "string" }, bars: { type: "number" },
-                count: { type: "string" }, where: { type: "string" }, mode: { type: "string" }, screen: { type: "string" }, text: { type: "string" }, echo: { type: "number" }, rev: { type: "number" }, level: { type: "string" }
+                count: { type: "string" }, where: { type: "string" }, mode: { type: "string" }, screen: { type: "string" }, text: { type: "string" }, echo: { type: "number" }, rev: { type: "number" }, level: { type: "string" },
+                preset: { type: "string" }, fadeIn: { type: "number" }, fadeOut: { type: "number" }, punch: { type: "number" }, room: { type: "string" }, vol: { type: "number" }
               },
               required: ["type"]
             }
@@ -108,7 +109,10 @@ const ACTIONS = `Allowed actions (use exact values):
 - {"type":"lead","section":"<section name>","mode":"voice"|"music"|"both"}
 - {"type":"style","name":one of ${JSON.stringify(STYLES)}}
 - {"type":"lyrics"} (opens lyric options for the current section)
-- {"type":"go","screen":"vocal"|"studio"|"restyle"|"save"|"room"}
+- {"type":"layer","preset":"Organ pad"|"String pad"|"Piano arpeggio"|"Guitar strum"|"Synth pulse"|"Choir ooh"|"Harp arpeggio"|"Brass swells"|"Electric piano"|"Low drone"} (adds a background layer that follows the chords)
+- {"type":"buildup"} (arranges layers/drums so the song starts small and builds to the last chorus)
+- {"type":"master","fadeIn":0-8,"fadeOut":0-12,"punch":0-1,"room":"Dry"|"Studio"|"Concert hall"|"Church"|"Stadium","vol":0.3-1.2} (Control Room master settings; include only the fields you change)
+- {"type":"go","screen":"vocal"|"studio"|"restyle"|"save"|"room"|"control"}
 - {"type":"tip","text":"<one short how-to sentence>"} (only when no action fits; at most one tip)`;
 function validAction(a, song) {
   if (!a || typeof a !== "object") return false;
@@ -127,7 +131,10 @@ function validAction(a, song) {
     case "bgv": return true;
     case "lead": return secNames.includes(a.section) && ["voice", "music", "both"].includes(a.mode);
     case "style": return STYLES.includes(a.name);
-    case "go": return ["vocal", "studio", "restyle", "save", "room"].includes(a.screen);
+    case "go": return ["vocal", "studio", "restyle", "save", "room", "control"].includes(a.screen);
+    case "layer": return ["Organ pad", "String pad", "Piano arpeggio", "Guitar strum", "Synth pulse", "Choir ooh", "Harp arpeggio", "Brass swells", "Electric piano", "Low drone"].includes(a.preset);
+    case "buildup": return true;
+    case "master": return ["fadeIn", "fadeOut", "punch", "room", "vol"].some(k => a[k] != null) && (a.room == null || ["Dry", "Studio", "Concert hall", "Church", "Stadium"].includes(a.room));
     case "tip": return !!a.text;
     default: return false;
   }
