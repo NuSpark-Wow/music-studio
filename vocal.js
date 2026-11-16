@@ -9,7 +9,7 @@
       const s = S.song, V = s.vocals, sec = MS.sec(), b = V.brief, opts = lyricOpts[sec.id] || [];
       const lead = V.lead[sec.id] || 'voice', locked = !!V.locked[sec.id];
       return `<div class="row small muted" style="margin-bottom:10px"><a href="#" onclick="MS.go('studio');return false">Studio</a><span>›</span><span style="color:var(--ink)">The Vocal Room</span><span style="margin-left:auto">“${esc(s.title)}” · ${esc(s.key)} · ${s.tempo} BPM</span></div>
-      <div class="card col"><div class="label">1 · The song talk</div>
+      <div class="card col"><div class="row" style="justify-content:space-between"><div class="label">1 · The song talk</div><div class="row">${MS.helpBtn('vocal', '? How the Vocal Room works')}${MS.helpBtn('brief')}</div></div>
         <div class="grid">
           <label class="f">What's it about?<textarea rows="2" onchange="MS.a.brief('about',this.value)">${esc(b.about)}</textarea></label>
           <label class="f">Mood<textarea rows="2" onchange="MS.a.brief('mood',this.value)">${esc(b.mood)}</textarea></label>
@@ -19,14 +19,14 @@
       <div class="card col" style="margin-top:12px"><div class="label">2 · Your song map</div>
         <div class="map">${s.sections.map(x => { const st = V.lyrics[x.id] ? (V.locked[x.id] ? 'Locked' : 'Lyrics done') : /intro|outro|solo/i.test(x.name) ? 'Music only' : 'Empty'; return `<button type="button" class="${x.id === sec.id ? 'sel' : ''}" style="flex-grow:${x.bars};background:${MS.SEC_COLOR(x.name)}" onclick="MS.a.pickSection('${x.id}')">${esc(x.name)}<span>${st}</span></button>`; }).join('')}</div></div>
       <div class="split" style="margin-top:12px"><div class="main">
-        <div class="card col"><div class="label">3 · Lyrics for ${esc(sec.name)} <span class="muted" style="text-transform:none;letter-spacing:0">(${sec.bars} bars)</span></div>
+        <div class="card col"><div class="row" style="justify-content:space-between"><div class="label">3 · Lyrics for ${esc(sec.name)} <span class="muted" style="text-transform:none;letter-spacing:0">(${sec.bars} bars)</span></div>${MS.helpBtn('lyrics')}</div>
           <label class="f">Type a line, or describe what happens here<textarea id="lineIn" rows="2">${esc(MS._lineIn && MS._lineIn[sec.id] || '')}</textarea></label>
           <div class="tiny muted">Example: “she leaves, he stays” or “The light stays on no matter how long it takes”.</div>
           <div class="row"><button class="btn primary" ${busy || locked ? 'disabled' : ''} onclick="MS.a.getLyrics()">${busy ? 'Writing…' : opts.length ? '3 more options' : 'Get 3 options'}</button>${locked ? '<span class="small muted">This section is locked.</span>' : ''}</div>
           ${opts.length ? `<div class="grid">${opts.map((o, i) => `<div class="opt ${V.lyrics[sec.id] === o ? 'on' : ''}"><div class="row" style="justify-content:space-between"><span class="tiny" style="color:var(--amber);font-weight:700">OPTION ${i + 1}</span><button class="btn sm ${V.lyrics[sec.id] === o ? 'primary' : ''}" onclick="MS.a.useLyric(${i})">${V.lyrics[sec.id] === o ? 'Chosen' : 'Use this'}</button></div><div class="lyric">${esc(o)}</div></div>`).join('')}</div>` : ''}
           <label class="f">Your lyrics for ${esc(sec.name)} (edit freely)<textarea rows="4" ${locked ? 'readonly' : ''} onchange="MS.a.setLyric(this.value)">${esc(V.lyrics[sec.id] || '')}</textarea></label>
           <div class="row"><button class="btn sm" onclick="MS.a.lock()">${locked ? 'Unlock section' : 'Lock this section'}</button><span class="tiny muted">Locked sections stay exactly as you wrote them.</span></div></div>
-        <div class="card col"><div class="label">4 · Who carries the tune in ${esc(sec.name)}?</div>
+        <div class="card col"><div class="row" style="justify-content:space-between"><div class="label">4 · Who carries the tune in ${esc(sec.name)}?</div>${MS.helpBtn('carry')}</div>
           <div class="grid">${[['voice', 'Voice leads', 'You sing the melody. The instruments step back and support you.'], ['music', 'Music leads', 'An instrument plays the melody. Good for intros, solos and breaks.'], ['both', 'Both', 'Voice and the melody instrument play the tune together for a fuller sound.']].map(([k, t, d]) => `<div class="opt ${lead === k ? 'on' : ''}"><b style="font-size:16px">${t}</b><span class="small" style="color:#ddd8cc">${d}</span><div class="row"><button class="btn sm ${lead === k ? 'primary' : ''}" onclick="MS.a.setLead('${k}')">${lead === k ? 'Chosen' : 'Choose'}</button><button class="btn sm" onclick="MS.a.hearLead('${k}')">▶ Hear it</button></div></div>`).join('')}</div>
           <div class="tiny muted">Before you record, “Hear it” uses a built-in voice to show the idea.</div></div>
       </div><div class="side">
@@ -74,7 +74,7 @@
   // ---------- lead vocal ----------
   function leadCard() {
     const V = S.song.vocals, sec = MS.sec();
-    return `<div class="card col"><div class="label">5 · Lead vocal</div>
+    return `<div class="card col"><div class="row" style="justify-content:space-between"><div class="label">5 · Lead vocal</div>${MS.helpBtn('lead')}</div>
       ${recState ? `<div class="small" style="color:var(--coral)">Recording ${recState.section ? '“' + esc(sec.name) + '”' : 'the whole song'}… sing along. Tap Stop when you're done.</div>` : ''}
       <div class="row" style="justify-content:center"><button class="rec ${recState ? 'live' : ''}" onclick="MS.a.recLead(${recState ? 'null' : "'section'"})" aria-label="${recState ? 'Stop recording' : 'Record this section'}">${recState ? 'Stop' : 'Record<br>' + esc(sec.name)}</button></div>
       ${recState ? '' : `<button class="btn sm" onclick="MS.a.recLead('song')">Record the whole song instead</button>`}
@@ -145,7 +145,7 @@
   // ---------- background singers ----------
   function bgvCard() {
     const g = S.song.vocals.bgv;
-    return `<div class="card col"><div class="label">6 · Background singers</div>
+    return `<div class="card col"><div class="row" style="justify-content:space-between"><div class="label">6 · Background singers</div>${MS.helpBtn('bgv')}</div>
       <label class="row small"><input type="checkbox" ${g.on ? 'checked' : ''} onchange="MS.a.bgv('on',this.checked)"> Add background singers</label>
       <div class="col" style="${g.on ? '' : 'opacity:.5;pointer-events:none'}">
       <div class="level">How many</div>${MS.seg(['One', 'A trio', 'A group'], g.count, "MS.a.bgv('count',")}

@@ -187,7 +187,7 @@
       s += `<line x1="${sx}" x2="${sx}" y1="${y}" y2="${sy2}" stroke="${c}" stroke-width="1.3"/>`;
       if (base <= 0.5) s += glyph(base === 0.5 ? (up ? 'flag8thUp' : 'flag8thDown') : (up ? 'flag16thUp' : 'flag16thDown'), sx - 0.6, sy2, c);
     }
-    if (dotted) s += `<circle cx="${hx + hw + 5}" cy="${(step % 2 === 0) ? y - S / 2 : y}" r="1.8" fill="${c}"/>`;
+    if (dotted) s += `<circle cx="${hx + hw + 8}" cy="${(step % 2 === 0) ? y - S / 2 : y}" r="2.2" fill="${c}"/>`;
     return s;
   }
   function restSvg(d, x, y0, c) { return rest(d, x, y0, c); }

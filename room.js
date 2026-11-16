@@ -22,7 +22,7 @@
     html() {
       if (S.arg) return lessonHtml(S.arg);
       const n = ALL.filter(l => done(l.id)).length;
-      return MS.banner() + `<div class="card col"><div class="row" style="justify-content:space-between"><h1 style="font-size:30px">The Music Room</h1><button class="btn" onclick="MS.go(MS.S.song?'studio':'home')">${S.song ? 'Go to the studio' : 'Back'}</button></div>
+      return MS.banner() + `<div class="card col"><div class="row" style="justify-content:space-between"><div class="row"><h1 style="font-size:30px">The Music Room</h1>${MS.helpBtn('room')}</div><button class="btn" onclick="MS.go(MS.S.song?'studio':'home')">${S.song ? 'Go to the studio' : 'Back'}</button></div>
         <p style="margin:0;color:#ddd8cc;font-size:16px">Like music class, one short lesson at a time. Tap, listen and try. When you make something you like, send it to the studio and keep going there with instruments, drums and vocals.</p>
         <div class="row small"><span>${n} of ${ALL.length} lessons done</span><div class="meter grow" style="max-width:300px"><i style="width:${n / ALL.length * 100}%;background:var(--teal)"></i></div></div></div>
         <div class="grid" style="margin-top:12px">${GROUPS.map((g, gi) => `<div class="card col"><div class="label">${gi + 1} · ${g[0]}</div>${g[1].map(l => `<button class="btn" style="justify-content:space-between" onclick="MS.go('room','${l[0]}')"><span>${l[1]}</span><span class="tiny ${done(l[0]) ? 'done' : 'muted'}">${done(l[0]) ? '✓ Done' : 'about ' + l[2] + ' min'}</span></button>`).join('')}</div>`).join('')}</div>` + MS.footer();

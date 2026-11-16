@@ -16,7 +16,7 @@
         <label class="f mod">Key<select onchange="MS.a.key(this.value)">${keyOpts}</select></label>
         <label class="f adv">Time<select onchange="MS.a.ts(+this.value)"><option value="4" ${s.ts === 4 ? 'selected' : ''}>4/4</option><option value="3" ${s.ts === 3 ? 'selected' : ''}>3/4</option></select></label>
         <label class="f" style="min-width:180px">Tempo <b style="color:var(--ink)" id="tempoV">${s.tempo} BPM</b><input type="range" min="40" max="200" value="${s.tempo}" oninput="document.getElementById('tempoV').textContent=this.value+' BPM'" onchange="MS.change(x=>x.tempo=+this.value,{quiet:true})"></label>
-        <button class="btn sm mod" onclick="MS.a.tapTempo()" title="Tap 4 times at the speed you want">Tap tempo</button></div>
+        <button class="btn sm mod" onclick="MS.a.tapTempo()" title="Tap 4 times at the speed you want">Tap tempo</button>${MS.helpBtn('keytempo')}${MS.helpBtn('studio', '? How the studio works')}</div>
         <div class="row"><button class="btn vocal" onclick="MS.go('vocal')">🎤 Vocal Room</button><button class="btn mod" onclick="MS.go('restyle')">Restyle</button><button class="btn primary" onclick="MS.go('save')">Save and download</button></div>
       </div>
       ${songMap()}
@@ -51,7 +51,7 @@
   // ---------- song map ----------
   function songMap() {
     const s = S.song, sec = MS.sec();
-    return `<div class="card col"><div class="row" style="justify-content:space-between"><div class="label">Song map</div>
+    return `<div class="card col"><div class="row" style="justify-content:space-between"><div class="row" style="gap:6px"><div class="label">Song map</div>${MS.helpBtn('songmap')}</div>
       <div class="row"><button class="btn sm" onclick="MS.a.addSection()">+ Section</button><button class="btn sm mod" onclick="MS.a.copySection()">Copy</button><button class="btn sm mod" onclick="MS.a.renameSection()">Rename</button>
       <button class="btn sm adv" onclick="MS.a.moveSection(-1)" aria-label="Move section left">◀</button><button class="btn sm adv" onclick="MS.a.moveSection(1)" aria-label="Move section right">▶</button>
       <button class="btn sm mod" onclick="MS.a.bars(-1)" aria-label="Fewer bars">− bar</button><button class="btn sm mod" onclick="MS.a.bars(1)" aria-label="More bars">+ bar</button><button class="btn sm" onclick="MS.a.delSection()">Delete</button></div></div>
@@ -110,7 +110,7 @@
   function partCard(p) {
     const active = p.id === S.part, s = S.song, ns = (p.notes[S.sec] || []), full = MS.used(ns), len = MS.sec().bars * s.ts;
     const I = A().INST[p.inst] || {};
-    const role = p.role === 'harmony' ? `<button class="btn sm" onclick="event.stopPropagation();MS.a.harmony('${p.id}')">Suggest a harmony</button>` : p.role === 'bass' ? `<button class="btn sm mod" onclick="event.stopPropagation();MS.a.bassLine()">Make a bass line</button>` : '';
+    const role = p.role === 'harmony' ? `<button class="btn sm" onclick="event.stopPropagation();MS.a.harmony('${p.id}')">Suggest a harmony</button>${MS.helpBtn('harmony', '?')}` : p.role === 'bass' ? `<button class="btn sm mod" onclick="event.stopPropagation();MS.a.bassLine()">Make a bass line</button>${MS.helpBtn('bass', '?')}` : '';
     return `<div class="card part tight ${active ? 'active' : ''}" onclick="MS.a.activate('${p.id}')">
       <div class="row" style="justify-content:space-between"><div class="row" style="gap:8px"><span class="dot" style="background:${p.color}"></span><b style="font-family:var(--H);font-size:17px">${esc(p.name)}</b>
       <button class="btn sm ghost" onclick="event.stopPropagation();MS.a.pickInst('${p.id}')" title="Change instrument">${esc(p.inst)}${I.ens ? (p.ens === 'section' ? ' · section' : ' · soloist') : ''} ▾</button>
@@ -248,12 +248,12 @@
   function notesCard() {
     const n = selNote(), p = MS.part();
     const lens = lensFor().map(([d, name, g]) => `<button class="btn sm ${S.len === d ? 'on' : ''}" aria-pressed="${S.len === d}" onclick="MS.a.len(${d})" title="${name}">${MSS.icon(d)} ${name}</button>`).join('');
-    return `<div class="card col"><div class="label">Add notes to ${esc(p.name)}</div>
+    return `<div class="card col"><div class="row" style="justify-content:space-between"><div class="label">Add notes to ${esc(p.name)}</div>${MS.helpBtn('addnotes')}</div>
       <div class="row" style="justify-content:center"><button class="rec ${MS._recording ? 'live' : ''}" onclick="MS.a.sing()" aria-label="${MS._recording ? 'Stop singing' : 'Sing a phrase'}">${MS._recording ? 'Stop' : '🎤 Sing'}</button></div>
       <div class="meter lvl" ${MS._recording ? '' : 'hidden'}><i></i></div>
       <div class="tiny muted" style="text-align:center">Tap Sing, sing a few notes slowly (la, la, la), tap Stop. You'll see what I heard first.</div>
-      <label class="row small mod" style="justify-content:center"><input type="checkbox" ${MS._click ? 'checked' : ''} onchange="MS._click=this.checked"> Play a beat while I sing</label>
-      <div class="label" style="margin-top:6px">Note length</div><div class="row" style="gap:6px">${lens}</div>
+      <div class="row" style="justify-content:center"><label class="row small mod"><input type="checkbox" ${MS._click ? 'checked' : ''} onchange="MS._click=this.checked"> Play a beat while I sing</label>${MS.helpBtn('sing', '? Singing tips')}</div>
+      <div class="row" style="justify-content:space-between;margin-top:6px"><div class="label">Note length</div>${MS.helpBtn('lengths', '?')}</div><div class="row" style="gap:6px">${lens}</div>
       <div class="row" style="gap:6px"><button class="btn sm" onclick="MS.a.addRest()">Add a rest</button>${S.level !== 'Basic' ? `<label class="row tiny mod"><input type="checkbox" ${S.view.names !== false ? 'checked' : ''} onchange="MS.a.names(this.checked)"> Show note names</label>` : ''}</div>
       <div class="keys pk" aria-label="Piano keyboard"></div>
       <div class="tiny muted">Tap a key or the staff to add a note${n ? ', or to change the selected note' : ''}.</div>
@@ -322,7 +322,7 @@
   function chordsCard() {
     const s = S.song, sec = MS.sec(), list = s.chords[sec.id] || [], cp = s.chordPart;
     const bars = Array.from({ length: sec.bars }, (_, i) => `<button class="btn sm" style="min-width:64px" onclick="MS.a.pickChord(${i})">${esc(list[i] || '—')}</button>`).join('');
-    return `<div class="card col mod"><div class="row" style="justify-content:space-between"><div class="label">Chords · ${esc(sec.name)}</div><div class="row"><button class="btn sm" onclick="MS.a.autoChords()">Suggest chords</button><button class="btn sm" onclick="MS.a.autoChords(true)">For every section</button></div></div>
+    return `<div class="card col mod"><div class="row" style="justify-content:space-between"><div class="row" style="gap:6px"><div class="label">Chords · ${esc(sec.name)}</div>${MS.helpBtn('chords')}</div><div class="row"><button class="btn sm" onclick="MS.a.autoChords()">Suggest chords</button><button class="btn sm" onclick="MS.a.autoChords(true)">For every section</button></div></div>
       <div class="row" style="gap:6px">${bars}</div>
       <div class="row"><label class="row small"><input type="checkbox" ${cp.on ? 'checked' : ''} onchange="MS.change(x=>x.chordPart.on=this.checked)"> Play the chords</label>
       ${cp.on ? `<button class="btn sm ghost" onclick="MS.a.pickInst('chords')">${esc(cp.inst)}${A().INST[cp.inst] && A().INST[cp.inst].ens ? (cp.ens === 'section' ? ' · section' : ' · soloist') : ''} ▾</button>
@@ -350,7 +350,7 @@
     return `<div class="card tight row" style="justify-content:space-between"><div class="row" style="gap:6px">
       <button class="btn primary" onclick="MS.a.playSection()">▶ Play ${esc(MS.sec().name)}</button><button class="btn" onclick="MS.a.play(false)">▶ Play song</button><button class="btn" onclick="MS.a.stop()">■ Stop</button>
       <button class="btn sm mod" aria-pressed="${loop}" style="${loop ? 'background:var(--teal);color:#06201d' : ''}" onclick="MS.a.loop()">Loop</button><button class="btn sm adv" aria-pressed="${countIn}" style="${countIn ? 'background:var(--teal);color:#06201d' : ''}" onclick="MS.a.countIn()">Count-in</button></div>
-      <div class="row" style="gap:6px"><button class="btn sm" onclick="MS.undo()">Undo</button><button class="btn sm" onclick="MS.redo()">Redo</button></div></div>`;
+      <div class="row" style="gap:6px">${MS.helpBtn('transport', '?')}<button class="btn sm" onclick="MS.undo()">Undo</button><button class="btn sm" onclick="MS.redo()">Redo</button></div></div>`;
   }
   MS.a.loop = () => { loop = !loop; MS.render(); };
   MS.a.countIn = () => { countIn = !countIn; MS.render(); };
@@ -409,7 +409,7 @@
   function soundCard() {
     const p = MS.part(), d = S.song.drums;
     const sl = (label, key, val, min, max, step) => `<label class="f">${label}<input type="range" min="${min}" max="${max}" step="${step}" value="${val}" onchange="MS.a.partSet('${p.id}','${key}',+this.value)"></label>`;
-    return `<div class="card col mod"><div class="label">Sound · ${esc(p.name)}</div>
+    return `<div class="card col mod"><div class="row" style="justify-content:space-between"><div class="label">Sound · ${esc(p.name)}</div>${MS.helpBtn('sound')}</div>
       ${sl('Volume', 'vol', p.vol, 0, 1, 0.05)}${sl('Echo', 'echo', p.echo, 0, 0.8, 0.05)}${sl('Reverb (room size)', 'rev', p.rev, 0, 1, 0.05)}
       <div class="adv">${sl('Left · Right', 'pan', p.pan, -1, 1, 0.1)}</div>
       <div class="adv col"><div class="label">Loudness in ${esc(MS.sec().name)}</div>${MS.seg(['p', 'mf', 'f'], p.dyn[S.sec] || 'mf', `MS.a.dyn('${p.id}',`)}<div class="tiny muted">p = soft, mf = medium, f = loud</div></div></div>`;
@@ -418,7 +418,7 @@
   MS.a.dyn = (id, v) => MS.change(s => { s.parts.find(x => x.id === id).dyn[S.sec] = v; });
   function drumsCard() {
     const d = S.song.drums;
-    return `<div class="card col"><div class="label">Drums</div>
+    return `<div class="card col"><div class="row" style="justify-content:space-between"><div class="label">Drums</div>${MS.helpBtn('drums')}</div>
       <label class="f">Beat<select onchange="MS.change(x=>x.drums.style=this.value)">${Object.keys(A().DRUMS).map(k => `<option ${d.style === k ? 'selected' : ''}>${k}</option>`).join('')}</select></label>
       ${d.style !== 'None' ? `<label class="f">Drum volume<input type="range" min="0" max="1" step="0.05" value="${d.vol}" onchange="MS.change(x=>x.drums.vol=+this.value,{quiet:true})"></label>
       <label class="row small mod"><input type="checkbox" ${d.skip[S.sec] ? 'checked' : ''} onchange="MS.change(x=>{x.drums.skip[MS.S.sec]=this.checked})"> No drums in ${esc(MS.sec().name)}</label>` : '<div class="tiny muted">Pick a beat to add drums under your song.</div>'}</div>`;
@@ -427,7 +427,7 @@
     const s = S.song;
     const strip = (name, color, obj, path) => `<div class="strip" style="border-top:3px solid ${color}"><b style="color:var(--ink)">${esc(name)}</b>
       ${['vol', 'echo', 'rev', 'pan'].map(k => `<label>${{ vol: 'Volume', echo: 'Echo', rev: 'Reverb', pan: 'Left · Right' }[k]}<input type="range" min="${k === 'pan' ? -1 : 0}" max="1" step="0.05" value="${obj[k] || 0}" onchange="MS.a.mix('${path}','${k}',+this.value)"></label>`).join('')}</div>`;
-    return `<div class="label" style="margin-bottom:10px">Mixer</div><div class="mixer">${s.parts.map(p => strip(p.name + ' · ' + p.inst, p.color, p, 'p:' + p.id)).join('')}
+    return `<div class="row" style="justify-content:space-between;margin-bottom:10px"><div class="label">Mixer</div>${MS.helpBtn('mixer')}</div><div class="mixer">${s.parts.map(p => strip(p.name + ' · ' + p.inst, p.color, p, 'p:' + p.id)).join('')}
       ${s.chordPart.on ? strip('Chords · ' + s.chordPart.inst, '#d9d4c8', s.chordPart, 'chords') : ''}
       ${MS.vbuf ? strip('Lead vocal', '#f08a6b', s.vocals, 'vocal') : ''}
       ${s.drums.style !== 'None' ? `<div class="strip" style="border-top:3px solid #888"><b style="color:var(--ink)">Drums · ${esc(s.drums.style)}</b><label>Volume<input type="range" min="0" max="1" step="0.05" value="${s.drums.vol}" onchange="MS.change(x=>x.drums.vol=+this.value,{quiet:true})"></label></div>` : ''}</div>
@@ -447,7 +447,7 @@
     const k = MS._pick, I = A().INST[k.inst] || {};
     const fam = A().FAMILIES.map(f => `<div class="card tight col"><b>${f}</b><div class="row" style="gap:6px">${Object.entries(A().INST).filter(([, v]) => v.family === f).map(([n]) => `<button class="btn sm" style="${n === k.inst ? 'border-color:var(--amber);background:#2a2210' : ''}" onclick="MS.a._pi('inst',${esc(JSON.stringify(n))})">${n}</button>`).join('')}</div></div>`).join('');
     const target = k.pid === 'chords' ? 'Chords' : (S.song.parts.find(p => p.id === k.pid) || {}).name;
-    MS.modal(`<div class="row" style="justify-content:space-between"><h2>Pick an instrument for ${esc(target)}</h2><button class="btn sm ghost" onclick="MS.closeModal()">Close</button></div>
+    MS.modal(`<div class="row" style="justify-content:space-between"><h2>Pick an instrument for ${esc(target)}</h2><div class="row">${MS.helpBtn('instruments')}<button class="btn sm ghost" onclick="MS.closeModal()">Close</button></div></div>
       <div class="split" style="margin-top:12px"><div class="main"><div class="grid">${fam}</div></div>
       <div class="side"><div class="card col"><div class="label">${esc(k.inst)}</div>
       ${I.ens ? `<div class="grid" style="grid-template-columns:1fr 1fr;gap:8px">

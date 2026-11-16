@@ -117,8 +117,9 @@
     const lv = ['Basic', 'Moderate', 'Advanced'].map(l => `<button type="button" class="pill amber ${l === S.level ? 'on' : ''}" aria-pressed="${l === S.level}" onclick="MS.a.level('${l}')">${l}</button>`).join('');
     const pp = ['White', 'Dark'].map(p => `<button type="button" class="pill ${p.toLowerCase() === S.paper ? 'on' : ''}" style="${p === 'White' && S.paper === 'white' ? 'background:#fbfaf6;color:#111;border-color:#fbfaf6' : ''}" aria-pressed="${p.toLowerCase() === S.paper}" onclick="MS.a.paper('${p.toLowerCase()}')">${p}</button>`).join('');
     return `<div class="header"><button type="button" class="brand" onclick="MS.go('home')"><b>The Music Studio</b><span>Sing it. See it. Hear it.</span></button>
-    <div class="row"><span class="level">Paper</span>${pp}</div>
-    <div class="row" role="group" aria-label="Music knowledge level"><span class="level">Level</span>${lv}</div></div>`;
+    <div class="row"><span class="level">Paper</span>${pp}${MS.helpBtn('paper', '?')}</div>
+    <div class="row" role="group" aria-label="Music knowledge level"><span class="level">Level</span>${lv}${MS.helpBtn('level', '?')}</div>
+    <div class="row" style="gap:6px"><button class="btn sm" onclick="MS.go('words')">📖 Studio Talk</button>${MS.helpBtn('rooms', '? Help')}</div></div>`;
   };
   MS.a.level = l => { S.level = l; MS.save(); MS.render(); };
   MS.a.paper = p => { S.paper = p; MS.save(); MS.render(); };
@@ -158,6 +159,7 @@
       <div class="card col"><h1 style="font-size:32px">Make your own music</h1>
       <p style="margin:0;font-size:16px;color:#ddd8cc;max-width:720px">Write notes on a staff, or sing a few notes and watch them appear. Add harmony, chords, drums and instruments from a solo violin to a full orchestra. Write lyrics with an AI helper, record your voice, add background singers, then download your sheet music and an MP3.</p>
       <div class="row" style="margin-top:4px">${has ? `<button class="btn primary" onclick="MS.go('studio')">Continue “${esc(S.song.title)}”</button>` : ''}<button class="btn ${has ? '' : 'primary'}" onclick="MS.a.newSong()">Start a new song</button><button class="btn" onclick="MS.a.openFile()">Open a saved song</button></div></div>
+      ${MS.roomsHtml()}
       <div class="card col"><div class="label">Pick your level</div><div class="small muted">You can change it anytime at the top.</div>
       <div class="grid">${[['Basic', 'New to music. Note names shown, big Sing button, simple choices.'], ['Moderate', 'Know a little. Chords, harmony, effects and the song map.'], ['Advanced', 'Read music. Full mixer, dynamics, sharps and flats, dotted notes.']].map(([l, d]) => `<button class="opt lesson-card ${S.level === l ? 'on' : ''}" onclick="MS.a.level('${l}')"><b style="font-size:17px">${l}</b><span class="small" style="color:#ddd8cc">${d}</span></button>`).join('')}</div></div>
       <div class="card col"><div class="label">Start from a classic</div><div class="small muted">Old songs anyone can use. Change them, restyle them, make them yours.</div>
@@ -258,7 +260,7 @@
     html() {
       const s = S.song; if (!s) return MS.screens.home.html();
       return `<div class="row small muted" style="margin-bottom:10px"><a href="#" onclick="MS.go('studio');return false">Studio</a><span>›</span><span style="color:var(--ink)">Restyle</span></div>
-      <div class="split"><div class="main"><div class="card col"><h2>Restyle “${esc(s.title)}”</h2><div class="small" style="color:#ddd8cc">Keep your melody, change everything around it: tempo, instruments, chords, bass and drums. Try a few. Undo goes back.</div>
+      <div class="split"><div class="main"><div class="card col"><div class="row" style="justify-content:space-between"><h2>Restyle “${esc(s.title)}”</h2>${MS.helpBtn('restyle')}</div><div class="small" style="color:#ddd8cc">Keep your melody, change everything around it: tempo, instruments, chords, bass and drums. Try a few. Undo goes back.</div>
       <div class="grid">${Object.entries(MS.STYLES).map(([k, v]) => `<div class="opt ${s.style === k ? 'on' : ''}"><b style="font-size:16px">${k}</b><span class="small" style="color:#ddd8cc">${v.d}</span><span class="tiny muted">${v.tempo} BPM · ${v.mel[0]}${v.mel[1] === 'section' ? ' section' : ''}</span><div class="row"><button class="btn sm ${s.style === k ? 'primary' : ''}" onclick="MS.a.restyle(${esc(JSON.stringify(k))})">${s.style === k ? 'Applied' : 'Use this style'}</button></div></div>`).join('')}</div></div></div>
       <div class="side"><div class="card col"><div class="label">Listen</div><div class="row"><button class="btn primary" onclick="MS.a.playSong()">Play song</button><button class="btn" onclick="MSA.stop()">Stop</button><button class="btn" onclick="MS.undo()">Undo</button></div><button class="btn" onclick="MS.go('studio')">Back to the studio</button></div>
       <div class="card col"><div class="label">Someone else's song?</div><div class="small" style="color:#ddd8cc">Type or sing the melody into the studio, then restyle it here. A modern 1812 Overture or an R&amp;B version of a favorite song is fine for your own enjoyment.</div>
@@ -281,7 +283,7 @@
       const other = s.source === 'other';
       return `<div class="row small muted" style="margin-bottom:10px"><a href="#" onclick="MS.go('studio');return false">Studio</a><span>›</span><span style="color:var(--ink)">Save and download</span></div>
       <div class="split"><div class="main">
-      <div class="card col"><h2>Save and download</h2>
+      <div class="card col"><div class="row" style="justify-content:space-between"><h2>Save and download</h2>${MS.helpBtn('save')}</div>
       <div class="row" style="align-items:flex-end"><label class="f grow">Song title<input value="${esc(s.title)}" onchange="MS.change(x=>x.title=this.value.slice(0,80),{quiet:true})"></label><label class="f grow">Your name (composer)<input value="${esc(s.composer)}" onchange="MS.change(x=>x.composer=this.value.slice(0,80),{quiet:true})"></label></div>
       ${other ? `<div class="small" style="color:var(--coral)">This song was written by someone else, so every download is marked “Personal use only”. ${S.agreed ? '' : 'Check the personal-use box on the home screen first.'}</div>` : ''}</div>
       <div class="grid">

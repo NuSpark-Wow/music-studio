@@ -64,15 +64,24 @@
     let el = document.getElementById('sugg');
     if (!el) { el = document.createElement('div'); el.id = 'sugg'; el.className = 'sugg'; el.setAttribute('role', 'region'); el.setAttribute('aria-label', 'Suggestions'); document.body.appendChild(el); }
     const w = where();
-    if (w.key !== C.key) { C.key = w.key; C.ideas = []; C.fill(true); }
+    if (w.key !== C.key) { C.key = w.key; C.ideas = []; wordIdx++; C.fill(true); }
     if (!C.ideas.length) C.ideas = localIdeas().slice(0, 3);
     el.className = 'sugg' + (C.min ? ' min' : '');
     el.innerHTML = `<div class="in"><div style="display:flex;flex-direction:column;margin-right:4px"><span class="tiny" style="letter-spacing:.1em;text-transform:uppercase;color:var(--violet);font-weight:700">Suggestions ${C.loading ? '…' : ''}</span><span class="tiny muted ctx">${esc(w.label)}</span></div>
-      <div class="chips row" style="gap:8px;flex:1 1 400px">${C.ideas.map((i, k) => `<button class="chip" onclick="MS.coach.apply(${k})">${esc(i.label)}<small>${esc(i.why || '')}</small></button>`).join('')}</div>
-      <div class="row" style="gap:6px;margin-left:auto"><button class="btn sm ask" onclick="MS.coach.more()">3 more</button><button class="btn sm ask" onclick="MS.coach.ask()">Ask</button><button class="btn sm" onclick="MS.undo()">Undo</button><button class="btn sm ghost" onclick="MS.coach.toggle()" aria-label="${C.min ? 'Show suggestions' : 'Hide suggestions'}">${C.min ? 'Show' : 'Hide'}</button></div></div>`;
+      <div class="chips row" style="gap:8px;flex:1 1 400px">${C.ideas.map((i, k) => `<button class="chip" onclick="MS.coach.apply(${k})">${esc(i.label)}<small>${esc(i.why || '')}</small></button>`).join('')}${C.wordChip()}</div>
+      <div class="row" style="gap:6px;margin-left:auto"><button class="btn sm ask" onclick="MS.coach.more()">3 more</button><button class="btn sm ask" onclick="MS.coach.ask()">Ask</button><button class="btn sm" onclick="MS.undo()">Undo</button>${MS.helpBtn('suggestions', '?')}<button class="btn sm ghost" onclick="MS.coach.toggle()" aria-label="${C.min ? 'Show suggestions' : 'Hide suggestions'}">${C.min ? 'Show' : 'Hide'}</button></div></div>`;
+  };
+  // one music word per screen, rotating, so people pick up studio vocabulary as they work
+  const WORDS_FOR = { home: ['Melody', 'Harmony', 'Chorus', 'Tempo'], studio: ['Bar (measure)', 'Chord progression', 'Bass line', 'Cadence', 'Arpeggio', 'Downbeat', 'Groove', 'Key', 'Dynamics', 'Third', 'Rest', 'Time signature'], vocal: ['Hook', 'Backing vocals', 'Take', 'Punch-in', 'Rhyme scheme', 'Call and response', 'Doubling', 'Lead vocal'], restyle: ['Genre', 'Arrangement', 'Swing', 'Groove'], save: ['Score', 'MP3', 'Master'], room: ['Staff', 'Clef', 'Beat', 'Interval'], words: ['Producer', 'Production'] };
+  let wordIdx = Math.floor(Math.random() * 5);
+  C.wordChip = function () {
+    if (!MS.WORDS) return '';
+    const list = (WORDS_FOR[S.screen] || WORDS_FOR.studio).filter(w => MS.WORDS[w]); if (!list.length) return '';
+    const w = list[wordIdx % list.length];
+    return `<button class="chip word" onclick="MS.word(${esc(JSON.stringify(w))})" title="${esc(MS.WORDS[w][0])}">📖 ${esc(w)}<small>Studio word · tap to learn</small></button>`;
   };
   C.toggle = () => { C.min = !C.min; try { localStorage.setItem('musicstudio.sugg', C.min ? 'min' : ''); } catch (e) { } C.render(); };
-  C.more = function () { C.seen.push(...C.ideas.map(i => i.label)); if (C.seen.length > 40) C.seen = C.seen.slice(-40); C.ideas = []; C.fill(false); C.render(); };
+  C.more = function () { wordIdx++; C.seen.push(...C.ideas.map(i => i.label)); if (C.seen.length > 40) C.seen = C.seen.slice(-40); C.ideas = []; C.fill(false); C.render(); };
   // ask the AI (only when a song exists and not too often); local ideas show meanwhile
   C.fill = async function (auto, ask) {
     if (!S.song || S.screen === 'home' || S.screen === 'room') return;

@@ -1,0 +1,182 @@
+/* The Music Studio — Help (what / why / how for every part of the tool) and Studio Talk (music vocabulary). */
+(function () {
+  const MS = window.MS, S = MS.S, A = () => window.MSA, esc = MS.esc;
+
+  // ---------- help topics ----------
+  const H = MS.HELP = {
+    rooms: { t: 'The rooms of The Music Studio', what: 'The tool is laid out like a real music building. Each room does one job, and your song travels with you from room to room.', why: 'Making a song has steps: learn, write, arrange, sing, polish, share. A room for each step keeps things simple.', how: ['<b>The Music Room</b>: short lessons. Send what you make to the studio.', '<b>The Studio</b>: write notes, add harmony, chords, bass and drums, pick instruments.', '<b>The Vocal Room</b>: write lyrics with AI help, record your voice, add background singers.', '<b>Restyle</b>: keep your melody, change the style (R&B, classical, rock…).', '<b>Save and download</b>: sheet music, MP3, WAV and a song file.', '<b>Studio Talk</b>: the music words, explained.'], tip: 'You can move between rooms anytime. Your song saves itself on this device.', words: ['Arrangement', 'Production', 'Mix'] },
+    level: { t: 'Levels: Basic, Moderate, Advanced', what: 'The level changes how much you see, based on how much music you know (not your age).', why: 'Beginners get fewer, friendlier choices. People who read music get the full set of tools.', how: ['<b>Basic</b>: note names on every note, a big Sing button, simple lengths.', '<b>Moderate</b>: adds chords, key, sound effects and song map tools.', '<b>Advanced</b>: adds the mixer, sharps and flats, dotted notes, 16ths, loudness marks, solo and left-right.'], tip: 'Switching levels never changes your song, only what you see.', words: ['Staff', 'Dynamics', 'Mixer'] },
+    paper: { t: 'Music paper: White or Dark', what: 'Choose how the staffs look: black lines on white paper like school music paper, or light lines on a dark background.', why: 'White is easiest to read and matches printed sheet music. Dark is easier on the eyes at night.', how: ['Tap White or Dark at the top.'], tip: 'Your downloaded sheet music is always on white paper.', words: ['Staff'] },
+    studio: { t: 'The Studio', what: 'Where you build your song. Each colored card is a <b>part</b> (melody, harmony, bass) written on its own staff.', why: 'Real songs are layers: a tune on top, a harmony that fits it, a bass that holds it up, and drums for the beat.', how: ['Pick a section on the song map (Verse, Chorus…).', 'Tap a part card to choose where new notes go.', 'Add notes by tapping the staff, playing the piano keys, or pressing Sing.', 'Press ▶ Play to hear the section, or Play song for all of it.'], tip: 'Undo is always at the bottom of the screen.', words: ['Part', 'Melody', 'Harmony', 'Bass line'] },
+    songmap: { t: 'Song map', what: 'The blocks across the top are your song, in order: intro, verses, choruses, bridge, outro. The wider the block, the more bars it has.', why: 'Songs repeat parts on purpose. A map lets you build each part once, copy it, and arrange the order.', how: ['Tap a block to edit it.', '+ Section adds a new part after the one you are on.', 'Copy repeats the block (great for a chorus).', '− bar / + bar makes the block shorter or longer.', 'Advanced: ◀ ▶ moves a block earlier or later.'], tip: 'A common pattern: Intro, Verse, Chorus, Verse, Chorus, Bridge, Chorus, Outro.', words: ['Section', 'Verse', 'Chorus', 'Bridge', 'Bar (measure)'] },
+    addnotes: { t: 'Adding notes', what: 'Three ways to write music: tap the staff, tap a piano key, or sing.', why: 'Some people think in sound, some in keys, some in pictures. Use whichever feels natural.', how: ['Pick a <b>note length</b> first (quarter is a good start).', 'Tap the staff where you want the note: higher on the staff = higher sound.', 'Or tap a piano key: the note is added at the end of the part.', 'Tap a note to select it, then use ▲ ▼ to move it, or a length button to change it.'], tip: 'Keyboard shortcuts: arrows move and select, Delete removes, R makes a rest, 1–4 pick lengths.', words: ['Note', 'Rest', 'Staff', 'Clef'] },
+    sing: { t: 'Sing to notes', what: 'Sing a few notes and The Music Studio writes them on the staff for you.', why: 'You can write a melody even if you can\'t read music. Hum it, see it.', how: ['Tap Sing and allow the microphone.', 'Sing slowly, one clear note at a time ("la, la, la").', 'Tap Stop.', 'Check "Here\'s what I heard", press ▶ Hear it, then Keep, Redo or Cancel.'], tip: 'Best results: one voice, a quiet room, short phrases. Turn on "Play a beat while I sing" to stay in time.', words: ['Pitch', 'Phrase', 'Key'] },
+    lengths: { t: 'Note lengths', what: 'How long each note lasts, counted in beats.', why: 'Rhythm is half of music. The same notes with different lengths make a completely different tune.', how: ['Whole = 4 beats, half = 2, quarter = 1, eighth = ½.', 'A dot adds half again: dotted half = 3, dotted quarter = 1½.', 'Pick a length before adding notes, or select a note and tap a length to change it.'], tip: 'In 4/4 time every bar holds 4 beats. "Beats filled" under each staff keeps count.', words: ['Beat', 'Bar (measure)', 'Time signature', 'Rest'] },
+    chords: { t: 'Chords', what: 'A chord is several notes played together. Each bar can have one chord, shown above the melody.', why: 'Chords are the "background color" of a song. They make a simple tune sound full and tell your bass line and background singers what to play.', how: ['Press Suggest chords: they are picked to fit your melody.', 'Tap any chord to change it. You hear each chord as you pick it.', 'Check "Play the chords" and pick an instrument and style (Block, Sustained, Arpeggio, Strum).'], tip: 'Most songs in C use C, F, G and Am. G at the end of a line wants to go home to C.', words: ['Chord', 'Chord progression', 'Cadence', 'Arpeggio'] },
+    drums: { t: 'Drums', what: 'A drum pattern (a beat) that plays under your whole song.', why: 'Drums give a song its pulse and its style. The same melody feels different over a ballad beat or a rock beat.', how: ['Pick a beat: Pop, Rock, Soft ballad, R&B, Hip-hop, Jazz swing, Country, Waltz or March.', 'Set the drum volume.', 'Moderate: turn drums off for one section (a quiet intro or bridge).'], tip: 'Dropping the drums for a section, then bringing them back, is a classic way to build excitement.', words: ['Groove', 'Swing', 'Downbeat', 'Fill'] },
+    sound: { t: 'Sound and effects', what: 'Volume, echo and reverb for the part you are working on.', why: 'Effects place a sound in space. A little reverb makes a dry piano sound like it is in a real room.', how: ['<b>Volume</b>: louder or softer than the other parts.', '<b>Echo</b>: repeats the sound a moment later.', '<b>Reverb</b>: makes the room sound bigger.', 'Advanced: <b>Left · Right</b> moves the part in the speakers; <b>Loudness</b> sets p, mf or f for this section.'], tip: 'A little goes a long way. Too much reverb makes everything blurry.', words: ['Reverb', 'Echo (delay)', 'Pan', 'Dynamics'] },
+    mixer: { t: 'The mixer', what: 'Every part, the chords, your voice and the drums side by side, each with its own sliders.', why: 'Mixing is balancing: making sure the melody is heard and nothing drowns anything else out.', how: ['Start with all volumes about the same.', 'Raise the melody (or your voice) a little above the rest.', 'Spread parts left and right so they don\'t crowd each other.', 'Use Solo on a part to hear it alone, Mute to hear the song without it.'], tip: 'Listen to the whole song, not one part at a time, when you make final changes.', words: ['Mix', 'Pan', 'Solo', 'Mute', 'Master'] },
+    transport: { t: 'Play, loop and count-in', what: 'The controls for listening.', why: 'Hearing it is how you know it works.', how: ['<b>Play section</b> plays the block you are editing.', '<b>Play song</b> plays everything in order and follows along on the staff.', '<b>Loop</b> repeats the section until you press Stop.', 'Advanced: <b>Count-in</b> clicks one bar before the music starts.'], tip: 'The yellow line on the staff shows where the music is.', words: ['Loop', 'Count-in', 'Playhead'] },
+    keytempo: { t: 'Key, tempo and time', what: 'The settings for the whole song.', why: 'Key sets which notes sound "at home". Tempo sets the speed. Time sets how many beats are in a bar.', how: ['<b>Key</b> (Moderate): C major is easiest. Changing it can move every note up or down.', '<b>Tempo</b>: drag the slider, or tap Tap tempo four times at the speed you want.', '<b>Time</b> (Advanced): 4/4 for most songs, 3/4 for a waltz.'], tip: 'Singing range feels too high or low? Change the key and move the notes.', words: ['Key', 'Tempo', 'BPM', 'Time signature'] },
+    instruments: { t: 'Picking instruments', what: 'Choose the sound for each part, from piano and guitar to a full orchestra.', why: 'The instrument changes the feeling: a solo violin is personal, a brass section is bold.', how: ['Tap the instrument name on a part card.', 'Pick a family, then an instrument. You hear it right away.', 'For strings, winds, brass and choir: choose <b>Section</b> (many players) or <b>Soloist</b> (one player).', 'Pick a section size and, for strings, how they play.'], tip: 'A classic orchestra trick: soloist on the melody, a section on the harmony.', words: ['Section', 'Soloist', 'Legato', 'Pizzicato', 'Tremolo'] },
+    harmony: { t: 'Harmony', what: 'A second line of notes that fits with your melody.', why: 'Harmony makes a song sound richer, like a second singer joining in.', how: ['Press Suggest a harmony on the Harmony part.', 'Pick a third below (warm), a third above (bright) or a sixth below (full).', 'Hear it, keep it, or tap notes to change them.'], tip: 'You can also sing your own harmony: select the Harmony part, then press Sing.', words: ['Harmony', 'Interval', 'Third'] },
+    bass: { t: 'Bass line', what: 'The low part that holds the song up.', why: 'The bass connects the drums and the chords. Without it, music feels like it is floating.', how: ['Press Make a bass line.', 'Pick Steady (root and fifth), Long notes or Walking (jazz).', 'It follows your chords, so set chords first for the best result.'], tip: 'Bass notes sit on the bass clef staff, below the melody.', words: ['Bass line', 'Root', 'Walking bass', 'Bass clef'] },
+    vocal: { t: 'The Vocal Room', what: 'Where the words and voices happen: lyrics, your lead vocal and background singers.', why: 'Lyrics and vocals turn a tune into a song people sing along to.', how: ['1 · Tell the AI what the song is about.', '2 · Pick a section on the song map.', '3 · Get 3 lyric options, choose one and edit it.', '4 · Decide who carries the tune: voice, music or both.', '5 · Record your voice.', '6 · Add background singers.'], tip: 'Use headphones when recording so the music doesn\'t leak into the mic.', words: ['Lead vocal', 'Backing vocals', 'Hook', 'Take'] },
+    brief: { t: 'The song talk', what: 'Three quick answers about your song: what it\'s about, the mood, and three words.', why: 'This is the brief every songwriter starts with. The AI reads it before writing any lyric idea, so the words fit your story.', how: ['Write one sentence about the story or feeling.', 'Add a mood: happy, sad, hopeful, angry, dreamy…', 'Pick three words that should show up or set the scene.', 'Stuck? Press "Give me ideas".'], tip: 'Specific beats general: "my dad\'s old truck" is better than "memories".', words: ['Hook', 'Theme'] },
+    lyrics: { t: 'Lyrics with AI options', what: 'For each section, type a line or describe what happens, and get 3 original lyric options that fit.', why: 'Staring at a blank page is the hardest part. Options give you something to react to, and you stay the writer.', how: ['Pick a section on the song map.', 'Type a line or an idea, then press Get 3 options.', 'Choose one with Use this, then edit it freely.', 'Lock a section when you love it; locked lyrics never change.'], tip: 'Verses tell the story, the chorus repeats the big idea (the hook), the bridge changes the view.', words: ['Verse', 'Chorus', 'Hook', 'Rhyme scheme'] },
+    carry: { t: 'Who carries the tune?', what: 'For each section, choose whether your voice sings the melody, an instrument plays it, or both.', why: 'In real songs the singer usually leads, but intros, solos and breaks often let an instrument take the tune.', how: ['<b>Voice leads</b>: the melody instrument steps way back behind your voice.', '<b>Music leads</b>: the instrument plays the tune (no singing needed).', '<b>Both</b>: voice and instrument together for a big moment.', 'Press ▶ Hear it to compare.'], tip: 'A common choice: Music leads for the intro and solo, Voice leads everywhere else.', words: ['Lead vocal', 'Doubling', 'Instrumental'] },
+    lead: { t: 'Recording your lead vocal', what: 'Sing along with your song and save it as the lead vocal.', why: 'Your own voice makes it truly your song. Built-in AI singing voices don\'t sound natural yet.', how: ['Put on headphones.', 'Press Record (this section) or Record the whole song.', 'You hear one bar of clicks, then the music. Sing along.', 'Press Stop, then ▶ to hear it with the music.', 'Use Line up if the voice sounds a little early or late.'], tip: 'Recording a section again replaces only that section, like a studio "punch-in".', words: ['Take', 'Punch-in', 'Count-in'] },
+    bgv: { t: 'Background singers', what: 'Built-in choir voices that sing behind the lead: one singer, a trio or a group.', why: 'Background vocals make a chorus feel big and give the lead singer support.', how: ['Check Add background singers.', 'How many: One, A trio, A group.', 'What they sing: Oohs and Aahs follow your chords; Harmony follows the melody; Echo repeats the last word; Call and response answers every other bar.', 'Where: chorus only, every section, or pick sections.', 'Blend: soft behind, even, or big and bold.'], tip: 'Start with "A trio · Harmony · Chorus only · Soft behind", then adjust.', words: ['Backing vocals', 'Harmony', 'Call and response', 'Ooh/Aah pad'] },
+    restyle: { t: 'Restyle', what: 'Keep your melody and change everything around it: tempo, instruments, chords, bass and drums.', why: 'The same tune can be a slow R&B ballad or a marching band. Hearing it different ways helps you find the right feel.', how: ['Pick a style card and press Use this style.', 'Listen. Don\'t like it? Undo, or try another.', 'Fine-tune afterwards in the studio.'], tip: 'For a song someone else wrote: check "written by someone else" and the personal-use box. It\'s fine for your own enjoyment.', words: ['Arrangement', 'Genre', 'Groove'] },
+    save: { t: 'Save and download', what: 'Take your song with you.', why: 'Share it with friends, print it, or keep working later on another device.', how: ['<b>Sheet music</b>: opens the print window. Choose "Save as PDF".', '<b>MP3</b>: the whole song as an audio file.', '<b>WAV</b>: full quality, bigger file.', '<b>Song file</b>: open it again later to keep editing.'], tip: 'Put your name in Composer so it prints on the sheet music.', words: ['MP3', 'WAV', 'Score'] },
+    room: { t: 'The Music Room', what: 'Short lessons, like music class: reading notes, rhythm, loud and soft, melody, chords, song parts and arranging.', why: 'A few basics make everything in the studio easier and more fun.', how: ['Tap any lesson. Each takes 2 to 4 minutes.', 'Listen, try, and get it right to earn a ✓.', 'When you make something you like, press Send to the studio.'], tip: 'Take them in order, or jump to what you need.', words: ['Staff', 'Beat', 'Melody', 'Chord'] },
+    suggestions: { t: 'The suggestions bar', what: 'Three ideas at the bottom of every screen, based on your song right now.', why: 'Like a producer in the room: it notices what is missing and offers a next step.', how: ['Tap an idea to apply it in one step.', 'Undo if you don\'t like it.', '3 more gives new ideas. Ask lets you type what you want, like "make the chorus bigger".', 'Hide tucks the bar away.'], tip: 'Ideas can be wrong. You always have the final say.', words: ['Producer', 'Arrangement'] }
+  };
+
+  // ---------- Studio Talk: music vocabulary ----------
+  const W = MS.WORDS = {
+    'Arpeggio': ['The notes of a chord played one after another instead of all at once.', 'Pick "Arpeggio" as the chord style for a flowing, harp-like sound.', 'arp'],
+    'Arrangement': ['Deciding who plays what and when: instruments, parts, and how the song builds.', 'Restyle and the instrument picker are arranging tools.'],
+    'Backing vocals': ['Singers behind the lead, adding harmony or "oohs". Also called background vocals.', 'Add them in the Vocal Room, step 6.'],
+    'Bar (measure)': ['A small box of time on the staff, separated by vertical lines. In 4/4 each bar holds 4 beats.', 'Song map blocks are counted in bars.'],
+    'Bass clef': ['The symbol (𝄢) for low notes. Bass, cello and tuba parts use it.', 'Your Bass part is written on the bass clef.'],
+    'Bass line': ['The lowest part of the music, which holds up the chords and locks with the drums.', 'Press "Make a bass line" in the studio.'],
+    'Beat': ['The steady pulse you tap your foot to.', 'Turn on "Play a beat while I sing" to hear it.', 'beat'],
+    'BPM': ['Beats per minute: how fast the beat goes. 60 is slow, 120 is a brisk march.', 'Set it with the Tempo slider or Tap tempo.'],
+    'Bridge': ['A section near the end that changes the view, the chords or the melody before the last chorus.', 'Add one from the song map with + Section.'],
+    'Cadence': ['A chord move that sounds like the end of a sentence. G going to C sounds like "home".', 'End a section on the home chord (C in C major).', 'cadence'],
+    'Call and response': ['One voice sings, another answers, back and forth.', 'A background singer option in the Vocal Room.'],
+    'Chord': ['Three or more notes played at the same time.', 'Chords show above the melody staff.', 'chord'],
+    'Chord progression': ['The order of chords in a song, like C – F – G – C.', 'Press Suggest chords to get a progression that fits your melody.'],
+    'Chorus': ['The catchy part that repeats with the same words. Usually where the title is.', 'Copy your chorus block to repeat it.'],
+    'Clef': ['The symbol at the start of the staff that says which notes the lines mean. Treble 𝄞 for higher notes, bass 𝄢 for lower.', 'Each part card shows its clef.'],
+    'Count-in': ['Clicks before the music starts so you know when to come in.', 'Vocal recording always gives you one bar of count-in.', 'countin'],
+    'Downbeat': ['Beat 1 of a bar, the strongest beat.', 'The louder click in a count-in is the downbeat.'],
+    'Dynamics': ['How loud or soft to play: p (soft), mf (medium loud), f (loud).', 'Advanced: set Loudness per section.', 'dynamics'],
+    'Echo (delay)': ['The sound repeats a moment later, like shouting in a canyon.', 'Echo slider in Sound or the mixer.', 'echo'],
+    'Fill': ['A short drum burst at the end of a section that leads into the next.', 'The drums add a small fill at the end of each section.'],
+    'Genre': ['A style of music: pop, R&B, rock, jazz, classical, country, hip-hop.', 'Try different genres in Restyle.'],
+    'Groove': ['The feel of the rhythm that makes you want to move.', 'Drum beats and the bass line create the groove.'],
+    'Harmony': ['Notes that sound good together with the melody, often a third above or below.', 'Press "Suggest a harmony".', 'harmony'],
+    'Hook': ['The short, catchy bit you can\'t get out of your head, usually in the chorus.', 'Ask the AI for a chorus with a clear hook line.'],
+    'Instrumental': ['A section or song with no singing.', 'Choose "Music leads" for an instrumental section.'],
+    'Interval': ['The distance between two notes. A third skips one letter (C to E).', 'Harmonies are built from intervals.'],
+    'Intro': ['The opening section that sets the mood before the singing starts.', 'Many intros are 2 or 4 bars of music only.'],
+    'Key': ['The home base of a song: which notes and chords sound natural. C major uses only the white piano keys.', 'Change it at the top of the studio (Moderate).'],
+    'Lead vocal': ['The main singer, who sings the melody and the words.', 'Record yours in the Vocal Room.'],
+    'Legato': ['Smooth and connected, notes flowing into each other.', 'A string playing style in the instrument picker.', 'legato'],
+    'Loop': ['Playing the same section over and over.', 'Turn on Loop while you practice a part.'],
+    'Master': ['The final overall sound of the whole mix.', 'Downloads are evened out in loudness automatically.'],
+    'Melody': ['The tune: the line of notes you hum or sing.', 'The Melody part is the top card in the studio.'],
+    'Mix': ['Balancing all the parts so everything can be heard and sounds good together.', 'Use the mixer (Advanced).'],
+    'Mixer': ['The panel of sliders for every part: volume, echo, reverb, left-right.', 'Switch to Advanced to see it.'],
+    'MP3': ['A small audio file that plays almost anywhere.', 'Download one from Save.'],
+    'Mute': ['Silence one part so you can hear the song without it.', 'Every part card has a Mute button.'],
+    'Note': ['A written sound. Its place on the staff shows how high, its shape shows how long.', 'Tap the staff to add one.'],
+    'Ooh/Aah pad': ['Background singers holding long "ooh" or "aah" notes under the song.', 'Pick Oohs or Aahs for background singers.'],
+    'Outro': ['The closing section at the end of a song.', 'Add one from the song map.'],
+    'Pan': ['Where a sound sits between the left and right speaker.', 'The Left · Right slider (Advanced).'],
+    'Part': ['One line of music for one instrument or voice, written on its own staff.', 'Melody, Harmony and Bass are parts. + Add a part makes more.'],
+    'Phrase': ['A musical sentence: a few bars that feel complete, often one breath long.', 'Sing one phrase at a time into the mic.'],
+    'Pitch': ['How high or low a sound is.', 'Higher on the staff = higher pitch.'],
+    'Pizzicato': ['Plucking string instruments with a finger instead of using the bow.', 'A string playing style in the instrument picker.', 'pizz'],
+    'Playhead': ['The moving line that shows where the music is right now.', 'The yellow line on the staff during playback.'],
+    'Producer': ['The person who shapes the whole recording: arrangement, sound, performances.', 'The suggestions bar acts like a producer in the room.'],
+    'Production': ['Everything that turns a written song into a finished recording.', 'Instruments, effects, mixing and vocals.'],
+    'Punch-in': ['Re-recording just one part of a take, leaving the rest.', 'Recording a section again in the Vocal Room is a punch-in.'],
+    'Rest': ['A written silence. It has lengths just like notes.', 'Use "Add a rest" in the studio.'],
+    'Reverb': ['The natural echo of a room that makes sound fuller. Small room = little reverb, cathedral = lots.', 'Reverb slider in Sound or the mixer.', 'reverb'],
+    'Rhyme scheme': ['The pattern of rhymes in a verse, like lines 2 and 4 rhyming.', 'AI lyric options rhyme lines 2 and 4.'],
+    'Root': ['The note a chord is named after. The root of C is C.', 'Bass lines often play the root.'],
+    'Score': ['Sheet music showing all the parts together.', 'Download it from Save as a PDF.'],
+    'Section': ['1) A part of the song, like a verse or chorus. 2) A group of the same instrument playing together, like a violin section.', 'Section or Soloist in the instrument picker.'],
+    'Solo': ['1) One player alone, out front. 2) The Solo button plays only that part so you can hear it alone.', 'Solo button (Advanced) on each part.'],
+    'Soloist': ['A single player out front, clear and personal.', 'Pick Soloist in the instrument picker.', 'solo'],
+    'Staff': ['The five lines music is written on. Notes sit on the lines and in the spaces.', 'Every part has its own staff.'],
+    'Swing': ['A bouncy rhythm where pairs of eighth notes go long-short instead of even.', 'Pick the Jazz swing or R&B beat.', 'swing'],
+    'Take': ['One recording attempt.', 'Not happy? Record another take.'],
+    'Tempo': ['The speed of the music.', 'Slider at the top of the studio.', 'tempo'],
+    'Theme': ['The main idea or subject of a song.', 'Tell the AI your theme in the song talk.'],
+    'Third': ['Two letter names apart (C to E, D to F). The most common harmony interval.', 'Suggest a harmony → A third below.'],
+    'Time signature': ['The two numbers at the start (4/4, 3/4). Top = beats per bar, bottom 4 = each beat is a quarter note.', 'Change it in Advanced.'],
+    'Tremolo': ['Very fast repeated notes that shimmer.', 'A string playing style in the instrument picker.', 'trem'],
+    'Verse': ['The part that tells the story. Each verse has new words but the same tune.', 'Verse 1, Verse 2 on the song map.'],
+    'Walking bass': ['A bass line that moves on every beat, like walking. Classic in jazz.', 'Make a bass line → Walking.'],
+    'WAV': ['A full-quality audio file, bigger than MP3.', 'Download one from Save.'],
+    'Doubling': ['Two voices or instruments playing the same line together for a fuller sound.', '"Both" in Who carries the tune.']
+  };
+
+  MS.helpBtn = function (key, label) {
+    return `<button type="button" class="btn sm ghost helpbtn" onclick="event.stopPropagation();MS.help('${key}')" aria-label="Help: ${esc((H[key] || {}).t || key)}">${label || '? Help'}</button>`;
+  };
+  MS.help = function (key) {
+    const h = H[key]; if (!h) return;
+    MS.modal(`<div class="row" style="justify-content:space-between"><h2>${h.t}</h2><button class="btn sm ghost" onclick="MS.closeModal()">Close</button></div>
+      <div class="grid" style="margin-top:12px">
+        <div class="card col"><div class="label">What it is</div><div style="font-size:15px;line-height:1.55">${h.what}</div></div>
+        <div class="card col"><div class="label">Why it matters</div><div style="font-size:15px;line-height:1.55">${h.why}</div></div>
+      </div>
+      <div class="card col" style="margin-top:12px"><div class="label">How to do it</div><ol style="margin:0;padding-left:20px;font-size:15px;line-height:1.6">${h.how.map(x => `<li>${x}</li>`).join('')}</ol>
+      ${h.tip ? `<div class="small" style="color:var(--teal)">Tip: ${h.tip}</div>` : ''}</div>
+      ${h.words && h.words.length ? `<div class="col" style="margin-top:12px"><div class="label">Studio words</div><div class="row">${h.words.map(w => W[w] ? `<button class="pill" onclick="MS.word(${esc(JSON.stringify(w))})">${esc(w)}</button>` : '').join('')}</div></div>` : ''}`);
+  };
+  MS.word = function (w) {
+    const d = W[w]; if (!d) return;
+    MS.modal(`<div class="row" style="justify-content:space-between"><h2>${esc(w)}</h2><button class="btn sm ghost" onclick="MS.closeModal()">Close</button></div>
+      <div class="col" style="margin-top:12px"><div style="font-size:17px;line-height:1.55">${esc(d[0])}</div><div class="small" style="color:var(--teal)">In The Music Studio: ${esc(d[1])}</div>
+      <div class="row">${d[2] ? `<button class="btn" onclick="MS.hearWord('${d[2]}')">▶ Hear it</button>` : ''}<button class="btn ghost" onclick="MS.go('words')">All studio words</button></div></div>`);
+  };
+  // short sound examples for words that are easier heard than read
+  MS.hearWord = function (k) {
+    const s = MS.blankSong(), id = s.sections[0].id; s.sections = [{ id, name: 'x', bars: 2 }]; s.tempo = 96;
+    const mel = [{ p: 60, d: 1 }, { p: 64, d: 1 }, { p: 67, d: 1 }, { p: 72, d: 1 }, { p: 67, d: 1 }, { p: 64, d: 1 }, { p: 60, d: 2 }];
+    const P = s.parts[0]; P.notes[id] = mel; s.parts.length = 1;
+    const play = x => A().play(x);
+    switch (k) {
+      case 'tempo': s.tempo = 60; P.notes[id] = mel; A().play(s); setTimeout(() => { const f = JSON.parse(JSON.stringify(s)); f.tempo = 160; A().play(f); }, 5200); MS.toast('Slow (60 BPM), then fast (160 BPM)'); return;
+      case 'beat': case 'countin': s.drums.style = 'Pop'; P.notes[id] = []; return play(s);
+      case 'swing': P.notes[id] = mel.map(n => ({ p: n.p, d: 0.5 })).concat(mel.map(n => ({ p: n.p, d: 0.5 }))).slice(0, 16); s.drums.style = 'Jazz swing'; return play(s);
+      case 'dynamics': return A().previewSequence([60, 64, 67, 72].map((m, i) => ({ p: m, d: 1, v: [0.25, 0.5, 0.85, 1.25][i] })), 'Grand piano', 90);
+      case 'harmony': s.parts.push(Object.assign(MS.newPart('H', 'harmony', 'Grand piano', '#4fc3b8'), { notes: { [id]: mel.map(n => ({ p: A().scaleStep(n.p, -2, 'C major'), d: n.d })) } })); return play(s);
+      case 'chord': case 'arp': { const t = [60, 64, 67]; if (k === 'chord') t.forEach(m => A().preview(m, 'Grand piano', { dur: 1.5 })); else A().previewSequence(t.concat([72, 67, 64]).map(p => ({ p, d: 0.5 })), 'Harp', 100); return; }
+      case 'cadence': ['G', 'C'].forEach((c, i) => setTimeout(() => A().chordTones(c).tones.forEach(x => A().preview(60 + x - (x > 5 ? 12 : 0), 'Grand piano', { dur: 1.1 })), i * 900)); return;
+      case 'legato': case 'pizz': case 'trem': Object.assign(P, { inst: 'Violins', ens: 'section', artic: k === 'pizz' ? 'pizzicato' : k === 'trem' ? 'tremolo' : 'legato' }); return play(s);
+      case 'solo': Object.assign(P, { inst: 'Violins', ens: 'solo' }); return play(s);
+      case 'echo': Object.assign(P, { inst: 'Electric piano', echo: 0.6, rev: 0.1 }); return play(s);
+      case 'reverb': Object.assign(P, { inst: 'Grand piano', rev: 1, echo: 0 }); return play(s);
+    }
+  };
+
+  // ---------- Studio Talk screen ----------
+  let q = '';
+  MS.screens.words = {
+    html() {
+      const list = Object.keys(W).sort((a, b) => a.localeCompare(b)).filter(w => !q || (w + ' ' + W[w][0]).toLowerCase().includes(q.toLowerCase()));
+      const groups = {}; list.forEach(w => { const L = w[0].toUpperCase(); (groups[L] = groups[L] || []).push(w); });
+      return `<div class="row small muted" style="margin-bottom:10px"><a href="#" onclick="MS.go(MS.S.song?'studio':'home');return false">${S.song ? 'Studio' : 'Home'}</a><span>›</span><span style="color:var(--ink)">Studio Talk</span></div>
+      <div class="card col"><h1 style="font-size:30px">Studio Talk</h1><p style="margin:0;color:#ddd8cc;font-size:16px">The words musicians and producers use, in plain English. Tap ▶ to hear the ones that are easier heard than read.</p>
+      <label class="f" style="max-width:420px">Find a word<input id="wq" value="${esc(q)}" oninput="MS.a.wq(this.value)"></label><div class="tiny muted">Example: tempo, chorus, reverb</div></div>
+      <div class="grid" style="margin-top:12px">${Object.keys(groups).map(L => `<div class="card col"><div class="label">${L}</div>${groups[L].map(w => `<div><div class="row" style="justify-content:space-between;gap:6px"><b>${esc(w)}</b>${W[w][2] ? `<button class="btn sm ghost" onclick="MS.hearWord('${W[w][2]}')" aria-label="Hear ${esc(w)}">▶</button>` : ''}</div><div class="small" style="color:#ddd8cc">${esc(W[w][0])}</div><div class="tiny muted">${esc(W[w][1])}</div></div>`).join('')}</div>`).join('') || '<div class="card">No words match. Try another search.</div>'}</div>` + MS.footer();
+    }
+  };
+  MS.a.wq = v => { q = v; const pos = document.getElementById('wq').selectionStart; MS.render(); const i = document.getElementById('wq'); i.focus(); i.setSelectionRange(pos, pos); };
+
+  // ---------- rooms on the home page ----------
+  MS.roomsHtml = function () {
+    const R = [
+      ['The Music Room', 'Learn', 'Short lessons: reading notes, rhythm, melody, chords, song parts.', 'room', 'room', '#4fc3b8'],
+      ['The Studio', 'Write', 'Notes, harmony, chords, bass, drums and instruments.', 'studio', 'studio', '#f2b33d'],
+      ['The Vocal Room', 'Sing', 'Lyrics with AI options, your voice, background singers.', 'vocal', 'vocal', '#f08a6b'],
+      ['Restyle', 'Reimagine', 'Your melody as R&B, classical, rock, jazz and more.', 'restyle', 'restyle', '#b39dfa'],
+      ['Save and download', 'Share', 'Sheet music, MP3, WAV and a song file.', 'save', 'save', '#7fb2ff'],
+      ['Studio Talk', 'Words', 'Music vocabulary in plain English, with sound examples.', 'words', 'rooms', '#d9d4c8']
+    ];
+    return `<div class="card col"><div class="row" style="justify-content:space-between"><div class="label">Explore the rooms</div>${MS.helpBtn('rooms')}</div>
+      <div class="grid">${R.map(([t, verb, d, go, help, c]) => `<div class="opt" style="border-top:3px solid ${c}"><div class="row" style="justify-content:space-between"><b style="font-size:17px">${t}</b><span class="tiny" style="color:${c};font-weight:700;text-transform:uppercase;letter-spacing:.08em">${verb}</span></div>
+        <span class="small" style="color:#ddd8cc">${d}</span><div class="row" style="gap:6px"><button class="btn sm" onclick="MS.a.room('${go}')">Go in</button>${go !== 'words' ? MS.helpBtn(help, 'What happens here?') : ''}</div></div>`).join('')}</div></div>`;
+  };
+  MS.a.room = function (go) {
+    if (['studio', 'vocal', 'restyle', 'save'].includes(go) && !S.song) MS.setSong(MS.blankSong());
+    MS.go(go);
+  };
+})();
