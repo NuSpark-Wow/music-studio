@@ -33,11 +33,18 @@ async function callTool(system, tool, user, maxTokens, check, model) {
     messages: [{ role: "user", content: user }]
   });
   const block = (data.content || []).find(b => b.type === "tool_use");
-  if (block && block.input && check(block.input)) return block.input;
+  if (block && block.input) { const inp = unstring(block.input); if (check(inp)) return inp; }
   const txt = (data.content || []).filter(b => b.type === "text").map(b => b.text).join("");
   const s = txt.indexOf("{"), e = txt.lastIndexOf("}");
   if (s >= 0 && e > s) { const j = JSON.parse(txt.slice(s, e + 1)); if (check(j)) return j; }
   throw new Error("bad_shape");
+}
+// some models send nested arrays/objects as JSON text; turn them back into real values
+function unstring(o) {
+  if (typeof o === "string") { const t = o.trim(); if ((t[0] === "[" && t.endsWith("]")) || (t[0] === "{" && t.endsWith("}"))) { try { return unstring(JSON.parse(t)); } catch (e) { return o; } } return o; }
+  if (Array.isArray(o)) return o.map(unstring);
+  if (o && typeof o === "object") { const r = {}; for (const k in o) r[k] = unstring(o[k]); return r; }
+  return o;
 }
 async function tryTwice(fn, first, second) {
   try { return await fn(first); } catch (e) { console.error("retry:", e.message); return await fn(second); }
@@ -68,8 +75,13 @@ const SUGGEST_TOOL = {
             why: { type: "string", description: "Why it helps, max 45 characters, plain words" },
             action: {
               type: "object",
-              description: "One of the action types listed in the instructions, with its fields",
-              properties: { type: { type: "string" } }, required: ["type"]
+              description: "One of the action types listed in the instructions, with only the fields that type uses",
+              properties: {
+                type: { type: "string" }, value: { type: "number" }, part: { type: "string" }, inst: { type: "string" }, ens: { type: "string" }, size: { type: "string" }, artic: { type: "string" },
+                kind: { type: "string" }, all: { type: "boolean" }, style: { type: "string" }, section: { type: "string" }, from: { type: "string" }, name: { type: "string" }, bars: { type: "number" },
+                count: { type: "string" }, where: { type: "string" }, mode: { type: "string" }, screen: { type: "string" }, text: { type: "string" }, echo: { type: "number" }, rev: { type: "number" }, level: { type: "string" }
+              },
+              required: ["type"]
             }
           },
           required: ["label", "why", "action"]
@@ -127,7 +139,7 @@ async function suggest(body) {
 Song summary (JSON): ${clip(JSON.stringify(song), 3500)}
 ${body.ask ? `The user asked: "${clip(body.ask, 200)}". Make all 3 ideas answer this.` : ""}
 ${(body.avoid || []).length ? `Don't repeat these: ${clip(JSON.stringify(body.avoid), 600)}` : ""}`;
-  const out = await tryTwice(m => callTool(sys, SUGGEST_TOOL, user, 900, j => Array.isArray(j.ideas) && j.ideas.length > 0, m), FAST, MODEL);
+  const out = await tryTwice(m => callTool(sys, SUGGEST_TOOL, user, 1200, j => Array.isArray(j.ideas) && j.ideas.length > 0, m), FAST, MODEL);
   const ideas = out.ideas.filter(i => i && validAction(i.action, song)).slice(0, 3).map(i => ({ label: clip(i.label, 48), why: clip(i.why, 60), action: i.action }));
   return { ideas };
 }
@@ -154,7 +166,7 @@ async function lyrics(body) {
     /verse/i.test(sec.name) ? "This is a VERSE: tell part of the story with specific, concrete images; new details, not the hook." :
     /bridge/i.test(sec.name) ? "This is the BRIDGE: a change of view or a turn in the story before the last chorus." :
     /intro|outro/i.test(sec.name) ? "This is the " + clip(sec.name, 20).toUpperCase() + ": very short, sets or closes the mood." : "Write lyrics that fit this section.";
-  const sys = `You write song lyrics with users inside "The Music Studio". Write ONLY original lyrics. Never quote, paraphrase or imitate lines from existing published songs, and never name real artists or songs. Keep it suitable for a general audience (no explicit content). Write singable lines: natural rhythm, simple words, rhymes that feel easy (lines 2 and 4 rhyme, or couplets). Each option should take a clearly different approach (different images, angle or rhyme). Write in the same language the user writes in.`;
+  const sys = `You write song lyrics with users inside "The Music Studio". Write ONLY original lyrics. Never quote, paraphrase or imitate lines from existing published songs, and never name real artists or songs. Keep it suitable for a general audience (no explicit content). Write singable lines with a steady rhythm and simple, vivid words. Every option MUST rhyme: in 4 lines, lines 2 and 4 rhyme clearly (true rhymes like June/soon, door/before, not near-misses like love/come); in 2 lines, the two lines rhyme. A chorus repeats or returns to one short hook phrase. Each option should take a clearly different approach (different images, angle or rhyme). Write in the same language the user writes in.`;
   const user = `Song title: ${clip(body.title, 80)}
 What it's about: ${clip(body.brief && body.brief.about, 300)}
 Mood: ${clip(body.brief && body.brief.mood, 120)}
@@ -180,7 +192,7 @@ const BRIEF_TOOL = {
       about: { type: "string", description: "What the song is about, one sentence, max 120 characters" },
       mood: { type: "string", description: "2 to 4 mood words" },
       words: { type: "string", description: "Three words, comma separated" },
-      title: { type: "string", description: "A short original song title" }
+      title: { type: "string", description: "A short, NEW original song title that fits the idea (never 'My Song')" }
     },
     required: ["about", "mood", "words"]
   }
@@ -208,7 +220,7 @@ module.exports = async (req, res) => {
     return res.status(400).json({ error: "unknown_part" });
   } catch (e) {
     console.error(e);
-    return res.status(502).json({ error: "failed", message: "The AI helper lost its place. Please try again." });
+    return res.status(502).json({ error: "failed", detail: String(e && e.message || e).slice(0, 160), message: "The AI helper lost its place. Please try again." });
   }
 };
 
