@@ -15,7 +15,7 @@
   function where() {
     const s = S.song; if (!s) return { label: 'Knows: nothing yet. Start a song!', key: 'none' };
     const sec = MS.sec(), scr = S.screen;
-    const name = scr === 'vocal' ? 'Vocal Room' : scr === 'room' ? 'Music Room' : scr === 'restyle' ? 'Restyle' : scr === 'save' ? 'Save' : 'Studio';
+    const name = scr === 'control' ? 'Control Room' : scr === 'vocal' ? 'Vocal Room' : scr === 'room' ? 'Music Room' : scr === 'restyle' ? 'Restyle' : scr === 'save' ? 'Save' : 'Studio';
     return { label: `${name} · ${sec ? sec.name + ' · ' : ''}${s.key} · ${s.tempo} BPM`, key: scr + '|' + (sec && sec.id) };
   }
   C.summary = function () {
@@ -26,7 +26,7 @@
       parts: s.parts.map(p => ({ name: p.name, role: p.role, inst: p.inst, ens: p.ens, notes: Object.values(p.notes).reduce((a, l) => a + l.filter(n => n.p != null).length, 0), echo: p.echo, rev: p.rev })),
       drums: s.drums.style, chords: s.chordPart.on ? s.chordPart.inst + ' ' + s.chordPart.style : 'off',
       backgroundSingers: s.vocals.bgv.on ? s.vocals.bgv.count + ' ' + s.vocals.bgv.type + ' ' + s.vocals.bgv.where : 'off',
-      leadVocalRecorded: !!MS.vbuf, brief: s.vocals.brief
+      leadVocalRecorded: !!MS.vbuf, brief: s.vocals.brief, layers: (s.layers || []).map(l => l.name + ' (' + l.inst + ')'), master: s.master
     };
   };
 
@@ -38,6 +38,15 @@
     const sec = MS.sec(), mel = s.parts.find(p => p.role === 'melody'), har = s.parts.find(p => p.role === 'harmony'), bass = s.parts.find(p => p.role === 'bass');
     const melHere = mel && (mel.notes[sec.id] || []).some(n => n.p != null);
     const any = x => x && Object.values(x.notes).some(l => l.some(n => n.p != null));
+    if (S.screen === 'control') {
+      const L = s.layers || [];
+      if (!L.length) out.push({ label: 'Add a string pad layer', why: 'Strings holding your chords', action: { type: 'layer', preset: 'String pad' } });
+      if (L.length && !L.some(x => x.name === 'Organ pad')) out.push({ label: 'Add a soft organ pad', why: 'Warmth under the verse', action: { type: 'layer', preset: 'Organ pad' } });
+      if (L.length >= 1) out.push({ label: 'Build it up section by section', why: 'Small start, big last chorus', action: { type: 'buildup' } });
+      if (!(s.master || {}).fadeOut) out.push({ label: 'Add a 5-second fade out', why: 'A smooth, finished ending', action: { type: 'master', fadeOut: 5 } });
+      if (!(s.master || {}).punch) out.push({ label: 'Add a little punch (30%)', why: 'Fuller, steadier sound', action: { type: 'master', punch: 0.3 } });
+      if ((s.master || {}).room !== 'Concert hall') out.push({ label: 'Try the concert hall room', why: 'Big, natural space', action: { type: 'master', room: 'Concert hall' } });
+    }
     if (S.screen === 'vocal') {
       if (!s.vocals.brief.about) out.push({ label: 'Fill in what the song is about', why: 'Lyric ideas get much better', action: { type: 'tip', text: 'Type a sentence in “What\'s it about?” at the top, or press “Stuck? Give me ideas”.' } });
       if (!s.vocals.lyrics[sec.id]) out.push({ label: 'Get 3 lyric options for ' + sec.name, why: 'Pick one and make it yours', action: { type: 'lyrics' } });
@@ -56,6 +65,7 @@
     if (mel && mel.rev < 0.3) out.push({ label: 'Add a little reverb to the melody', why: 'Sounds like a bigger room', action: { type: 'effect', part: mel.name, rev: 0.4 } });
     out.push({ label: 'Try it as R&B', why: 'Slow groove, electric piano', action: { type: 'style', name: 'R&B' } });
     out.push({ label: 'Try a classical arrangement', why: 'Solo violin, strings and harp', action: { type: 'style', name: 'Classical' } });
+    if (S.screen !== 'control' && any(mel)) out.push({ label: 'Mix it in the Control Room', why: 'Layers, faders, master polish', action: { type: 'go', screen: 'control' } });
     if (S.screen !== 'vocal') out.push({ label: 'Write lyrics in the Vocal Room', why: 'AI gives 3 options per section', action: { type: 'go', screen: 'vocal' } });
     return out.filter(i => !C.seen.includes(i.label));
   }
@@ -72,7 +82,7 @@
       <div class="row" style="gap:6px;margin-left:auto"><button class="btn sm ask" onclick="MS.coach.more()">3 more</button><button class="btn sm ask" onclick="MS.coach.ask()">Ask</button><button class="btn sm" onclick="MS.undo()">Undo</button>${MS.helpBtn('suggestions', '?')}<button class="btn sm ghost" onclick="MS.coach.toggle()" aria-label="${C.min ? 'Show suggestions' : 'Hide suggestions'}">${C.min ? 'Show' : 'Hide'}</button></div></div>`;
   };
   // one music word per screen, rotating, so people pick up studio vocabulary as they work
-  const WORDS_FOR = { home: ['Melody', 'Harmony', 'Chorus', 'Tempo'], studio: ['Bar (measure)', 'Chord progression', 'Bass line', 'Cadence', 'Arpeggio', 'Downbeat', 'Groove', 'Key', 'Dynamics', 'Third', 'Rest', 'Time signature'], vocal: ['Hook', 'Backing vocals', 'Take', 'Punch-in', 'Rhyme scheme', 'Call and response', 'Doubling', 'Lead vocal'], restyle: ['Genre', 'Arrangement', 'Swing', 'Groove'], save: ['Score', 'MP3', 'Master'], room: ['Staff', 'Clef', 'Beat', 'Interval'], words: ['Producer', 'Production'] };
+  const WORDS_FOR = { home: ['Melody', 'Harmony', 'Chorus', 'Tempo'], studio: ['Bar (measure)', 'Chord progression', 'Bass line', 'Cadence', 'Arpeggio', 'Downbeat', 'Groove', 'Key', 'Dynamics', 'Third', 'Rest', 'Time signature'], vocal: ['Hook', 'Backing vocals', 'Take', 'Punch-in', 'Rhyme scheme', 'Call and response', 'Doubling', 'Lead vocal'], restyle: ['Genre', 'Arrangement', 'Swing', 'Groove'], control: ['EQ', 'Compression', 'Fader', 'Pad', 'Mastering', 'Fade', 'Post-production', 'Meter', 'Headroom', 'Engineer', 'Drop', 'Pan'], save: ['Score', 'MP3', 'Master'], room: ['Staff', 'Clef', 'Beat', 'Interval'], words: ['Producer', 'Production'] };
   let wordIdx = Math.floor(Math.random() * 5);
   C.wordChip = function () {
     if (!MS.WORDS) return '';
@@ -107,7 +117,7 @@
     const findPart = name => s && (s.parts.find(p => p.name.toLowerCase() === String(name || '').toLowerCase()) || s.parts.find(p => p.role === String(name || '').toLowerCase()));
     const done = msg => { C.seen.push(idea.label); C.ideas.splice(k, 1); const more = localIdeas().filter(i => !C.ideas.some(x => x.label === i.label)); if (more[0]) C.ideas.push(more[0]); MS.toast(msg || 'Done. Undo is right there if you don\'t like it.'); C.render(); };
     switch (a.type) {
-      case 'go': if (a.screen === 'new') return MS.a.newSong(); MS.go(a.screen === 'vocal' || a.screen === 'room' || a.screen === 'restyle' || a.screen === 'save' ? a.screen : 'studio'); return;
+      case 'go': if (a.screen === 'new') return MS.a.newSong(); MS.go(['vocal', 'room', 'restyle', 'save', 'control'].includes(a.screen) ? a.screen : 'studio'); return;
       case 'classic': return MS.a.classic(a.name);
       case 'tip': return MS.toast(a.text || idea.why, 5000);
       case 'lyrics': if (S.screen !== 'vocal') MS.go('vocal'); return MS.a.getLyrics();
@@ -127,6 +137,9 @@
       case 'bgv': MS.change(x => { const g = x.vocals.bgv; g.on = true; if (a.count) g.count = a.count; if (a.kind) g.type = a.kind; if (a.where) g.where = a.where; }); return done('Background singers set. Press ▶ to hear them.');
       case 'lead': { const z = s.sections.find(y => y.name === a.section); if (!z) return MS.toast('That idea did not fit this song.'); MS.change(x => { x.vocals.lead[z.id] = a.mode; }); return done(); }
       case 'style': if (!MS.STYLES[a.name]) return; if (s.source === 'other' && !S.agreed) return MS.toast('Check the personal-use box first.'); MS.change(x => MS.applyStyle(x, a.name)); MS.a.playSong(); return done(a.name + ' style applied. Listen!');
+      case 'layer': { if (!MS.LAYER_PRESETS[a.preset]) return MS.toast('That layer is not available.'); MS.change(x => { MS.addLayer(x, a.preset); }); return done(a.preset + ' added. It follows your chords.'); }
+      case 'buildup': MS.a.buildUp(); return done('Built up. Press Play song.');
+      case 'master': MS.change(x => { const m = x.master; if (a.fadeIn != null) m.fadeIn = Math.max(0, Math.min(8, +a.fadeIn)); if (a.fadeOut != null) m.fadeOut = Math.max(0, Math.min(12, +a.fadeOut)); if (a.punch != null) m.punch = Math.max(0, Math.min(1, +a.punch)); if (['Dry', 'Studio', 'Concert hall', 'Church', 'Stadium'].includes(a.room)) m.room = a.room; if (a.vol != null) m.vol = Math.max(0.3, Math.min(1.2, +a.vol)); }); return done();
       default: MS.toast(idea.why || 'Try it!');
     }
   };

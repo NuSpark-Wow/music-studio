@@ -68,6 +68,8 @@
     s.vocals = Object.assign(b.vocals, s.vocals || {}); s.vocals.bgv = Object.assign(b.vocals.bgv, s.vocals.bgv || {});
     s.chordPart = Object.assign(b.chordPart, s.chordPart || {}); s.drums = Object.assign(b.drums, s.drums || {});
     s.parts.forEach(p => { p.notes = p.notes || {}; p.dyn = p.dyn || {}; });
+    s.layers = s.layers || []; s.master = Object.assign({ vol: 0.9, punch: 0, room: 'Studio', fadeIn: 0, fadeOut: 0, bypass: false }, s.master || {});
+    s.vocals.bgvMix = s.vocals.bgvMix || { vol: 0.8, rev: 0.5, echo: 0.1, pan: 0 };
     return s;
   }
   MS.fixSong = fixSong;

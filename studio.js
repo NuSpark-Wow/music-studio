@@ -17,7 +17,7 @@
         <label class="f adv">Time<select onchange="MS.a.ts(+this.value)"><option value="4" ${s.ts === 4 ? 'selected' : ''}>4/4</option><option value="3" ${s.ts === 3 ? 'selected' : ''}>3/4</option></select></label>
         <label class="f" style="min-width:180px">Tempo <b style="color:var(--ink)" id="tempoV">${s.tempo} BPM</b><input type="range" min="40" max="200" value="${s.tempo}" oninput="document.getElementById('tempoV').textContent=this.value+' BPM'" onchange="MS.change(x=>x.tempo=+this.value,{quiet:true})"></label>
         <button class="btn sm mod" onclick="MS.a.tapTempo()" title="Tap 4 times at the speed you want">Tap tempo</button>${MS.helpBtn('keytempo')}${MS.helpBtn('studio', '? How the studio works')}</div>
-        <div class="row"><button class="btn vocal" onclick="MS.go('vocal')">🎤 Vocal Room</button><button class="btn mod" onclick="MS.go('restyle')">Restyle</button><button class="btn primary" onclick="MS.go('save')">Save and download</button></div>
+        <div class="row"><button class="btn vocal" onclick="MS.go('vocal')">🎤 Vocal Room</button><button class="btn" style="border-color:#4a6a8a;background:#1a2433" onclick="MS.go('control')">🎚 Control Room</button><button class="btn mod" onclick="MS.go('restyle')">Restyle</button><button class="btn primary" onclick="MS.go('save')">Save and download</button></div>
       </div>
       ${songMap()}
       <div class="split" style="margin-top:12px"><div class="main">
@@ -439,14 +439,14 @@
 
   // ---------- instrument picker ----------
   MS.a.pickInst = function (pid) {
-    const target = pid === 'chords' ? S.song.chordPart : S.song.parts.find(p => p.id === pid);
+    const target = pid === 'chords' ? S.song.chordPart : pid.startsWith('L:') ? S.song.layers.find(L => 'L:' + L.id === pid) : S.song.parts.find(p => p.id === pid);
     MS._pick = { pid, inst: target.inst, ens: target.ens || 'solo', size: target.size || 'Chamber (12)', artic: target.artic || 'legato' };
     renderPicker();
   };
   function renderPicker() {
     const k = MS._pick, I = A().INST[k.inst] || {};
     const fam = A().FAMILIES.map(f => `<div class="card tight col"><b>${f}</b><div class="row" style="gap:6px">${Object.entries(A().INST).filter(([, v]) => v.family === f).map(([n]) => `<button class="btn sm" style="${n === k.inst ? 'border-color:var(--amber);background:#2a2210' : ''}" onclick="MS.a._pi('inst',${esc(JSON.stringify(n))})">${n}</button>`).join('')}</div></div>`).join('');
-    const target = k.pid === 'chords' ? 'Chords' : (S.song.parts.find(p => p.id === k.pid) || {}).name;
+    const target = k.pid === 'chords' ? 'Chords' : k.pid.startsWith('L:') ? (S.song.layers.find(L => 'L:' + L.id === k.pid) || {}).name : (S.song.parts.find(p => p.id === k.pid) || {}).name;
     MS.modal(`<div class="row" style="justify-content:space-between"><h2>Pick an instrument for ${esc(target)}</h2><div class="row">${MS.helpBtn('instruments')}<button class="btn sm ghost" onclick="MS.closeModal()">Close</button></div></div>
       <div class="split" style="margin-top:12px"><div class="main"><div class="grid">${fam}</div></div>
       <div class="side"><div class="card col"><div class="label">${esc(k.inst)}</div>
@@ -467,6 +467,6 @@
   };
   MS.a._useInst = function () {
     const k = MS._pick; MS.closeModal();
-    MS.change(s => { const t = k.pid === 'chords' ? s.chordPart : s.parts.find(p => p.id === k.pid); Object.assign(t, { inst: k.inst, ens: k.ens, size: k.size, artic: k.artic }); });
+    MS.change(s => { const t = k.pid === 'chords' ? s.chordPart : k.pid.startsWith('L:') ? s.layers.find(L => 'L:' + L.id === k.pid) : s.parts.find(p => p.id === k.pid); Object.assign(t, { inst: k.inst, ens: k.ens, size: k.size, artic: k.artic }); });
   };
 })();

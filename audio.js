@@ -267,19 +267,32 @@
   A.schedule = function (ctx, song, opts) {
     opts = opts || {};
     const spb = 60 / song.tempo, swingAmt = 0.33;
-    const master = ctx.createGain(); master.gain.value = 0.9;
-    const comp = ctx.createDynamicsCompressor(); comp.threshold.value = -14; comp.ratio.value = 3;
-    master.connect(comp); comp.connect(opts.dest || ctx.destination);
+    // master section (the Control Room): room sound, punch (compression), volume, fades, meters
+    const M = song.master || {}, byp = !!M.bypass;
+    const ROOMS = { 'Dry': [0.5, 0.35], 'Studio': [1.6, 0.8], 'Concert hall': [2.9, 1], 'Church': [4.6, 1.15], 'Stadium': [3.6, 1.05] };
+    const room = ROOMS[byp ? 'Studio' : (M.room || 'Studio')] || ROOMS.Studio, punch = byp ? 0 : (M.punch || 0);
+    const master = ctx.createGain(); master.gain.value = M.vol == null ? 0.9 : M.vol;
+    const comp = ctx.createDynamicsCompressor(); comp.threshold.value = -14 - 16 * punch; comp.ratio.value = 3 + 5 * punch; comp.attack.value = 0.01; comp.release.value = 0.2;
+    const makeup = ctx.createGain(); makeup.gain.value = 1 + 0.7 * punch;
+    const fader = ctx.createGain(); fader.gain.value = 1;
+    master.connect(comp); comp.connect(makeup); makeup.connect(fader); fader.connect(opts.dest || ctx.destination);
+    const meters = {};
+    if (opts.meters) { const an = ctx.createAnalyser(); an.fftSize = 512; fader.connect(an); meters.master = an; }
     // shared reverb + echo
-    const conv = ctx.createConvolver(); conv.buffer = impulse(ctx, 2.6); const rvOut = ctx.createGain(); rvOut.gain.value = 0.8; conv.connect(rvOut); rvOut.connect(master);
+    const conv = ctx.createConvolver(); conv.buffer = impulse(ctx, room[0]); const rvOut = ctx.createGain(); rvOut.gain.value = 0.8 * room[1]; conv.connect(rvOut); rvOut.connect(master);
     const dl = ctx.createDelay(2); dl.delayTime.value = spb * 0.75; const fb = ctx.createGain(); fb.gain.value = 0.35; const dlf = ctx.createBiquadFilter(); dlf.type = 'lowpass'; dlf.frequency.value = 3000;
     dl.connect(dlf); dlf.connect(fb); fb.connect(dl); dlf.connect(master);
-    function channel(p) {
+    // one mixing-board channel: fader → bass/treble EQ → pan, with echo and reverb sends and a meter
+    function channel(p, key) {
       const g = ctx.createGain(); g.gain.value = (p.vol == null ? 0.8 : p.vol) * (p.mute ? 0 : 1);
+      const lo = ctx.createBiquadFilter(); lo.type = 'lowshelf'; lo.frequency.value = 220; lo.gain.value = byp ? 0 : (p.bass || 0);
+      const hi = ctx.createBiquadFilter(); hi.type = 'highshelf'; hi.frequency.value = 3200; hi.gain.value = byp ? 0 : (p.treble || 0);
+      g.connect(lo); lo.connect(hi);
       const pan = ctx.createStereoPanner ? ctx.createStereoPanner() : null;
-      if (pan) { pan.pan.value = p.pan || 0; g.connect(pan); pan.connect(master); } else g.connect(master);
-      const sr = ctx.createGain(); sr.gain.value = (p.rev == null ? 0.25 : p.rev) * 0.9; g.connect(sr); sr.connect(conv);
-      const se = ctx.createGain(); se.gain.value = (p.echo || 0) * 0.8; g.connect(se); se.connect(dl);
+      if (pan) { pan.pan.value = p.pan || 0; hi.connect(pan); pan.connect(master); } else hi.connect(master);
+      const sr = ctx.createGain(); sr.gain.value = (p.rev == null ? 0.25 : p.rev) * 0.9; hi.connect(sr); sr.connect(conv);
+      const se = ctx.createGain(); se.gain.value = (p.echo || 0) * 0.8; hi.connect(se); se.connect(dl);
+      if (opts.meters && key) { const an = ctx.createAnalyser(); an.fftSize = 512; hi.connect(an); meters[key] = an; }
       return g;
     }
     const tl = A.timeline(song);
@@ -296,9 +309,10 @@
     // parts
     song.parts.forEach(p => {
       if (anySolo && !p.solo) return;
-      const ch = channel(p), dstyle = A.DRUMS[song.drums && song.drums.style];
+      const ch = channel(p, p.id), dstyle = A.DRUMS[song.drums && song.drums.style];
       tl.secs.forEach(s => {
         if (!keep(s)) return; const sb = startBeatOf(s); if (sb + s.len <= 0) return;
+        if (p.off && p.off[s.sec.id]) return;
         const notes = (p.notes && p.notes[s.sec.id]) || [];
         const dyn = (p.dyn && p.dyn[s.sec.id]) || 'mf', vel = dyn === 'p' ? 0.45 : dyn === 'f' ? 1 : 0.72;
         let melGain = 1;
@@ -319,9 +333,10 @@
     // chords accompaniment
     const cs = song.chordPart;
     if (cs && cs.on && !(anySolo && !cs.solo)) {
-      const ch = channel(cs), style = cs.style || 'Block';
+      const ch = channel(cs, 'chords'), style = cs.style || 'Block';
       tl.secs.forEach(s => {
         if (!keep(s)) return; const sb = startBeatOf(s);
+        if (cs.off && cs.off[s.sec.id]) return;
         const list = (song.chords && song.chords[s.sec.id]) || [];
         for (let bar = 0; bar < s.sec.bars; bar++) {
           const c = A.chordTones(list[bar]); if (!c) continue;
@@ -336,10 +351,37 @@
         }
       });
     }
+    // background layers (the Control Room): pads, arpeggios, strums that follow the chords
+    (song.layers || []).forEach(L => {
+      if (anySolo && !L.solo) return;
+      const ch = channel(L, L.id), oct = (L.octave || 0) * 12;
+      tl.secs.forEach(s => {
+        if (!keep(s) || (L.off && L.off[s.sec.id])) return; const sb = startBeatOf(s);
+        const list = (song.chords && song.chords[s.sec.id]) || [];
+        for (let bar = 0; bar < s.sec.bars; bar++) {
+          const c = A.chordTones(list[bar]); if (!c) continue;
+          const barStart = sb + bar * song.ts; if (barStart < 0) continue;
+          const tones = c.tones.map(x => { let m = 60 + oct + ((x - c.root + 12) % 12) + c.root; if (m >= 72 + oct) m -= 12; return m; });
+          const root = (() => { let r = 36 + c.root + oct; if (r < 36) r += 12; return r; })();
+          const play = (beat, dur, ns, v) => ns.forEach(m => { const e = A.voice(ctx, ch, T(barStart + beat), dur * spb, m, L.inst, { vel: v, solo: L.ens !== 'section', voices: A.SIZES[L.size] || 5, artic: L.artic || 'legato', vowel: L.vowel }); if (e > lastEnd) lastEnd = e; });
+          const st = L.style || 'Pad';
+          if (st === 'Pad') play(0, song.ts * 0.99, tones, 0.42);
+          else if (st === 'Arpeggio') { const arp = tones.concat([tones[0] + 12, tones[1] + 12]); for (let i = 0; i < song.ts * 2; i++) play(i * 0.5, 0.5, [arp[i % arp.length]], 0.5); }
+          else if (st === 'Strum') { for (let i = 0; i < song.ts; i++) play(i, 0.9, tones, i ? 0.4 : 0.55); }
+          else if (st === 'Pulse') { for (let i = 0; i < song.ts * 2; i++) play(i * 0.5, 0.38, tones, i % 2 ? 0.28 : 0.38); }
+          else if (st === 'Drone') play(0, song.ts * 0.99, [root], 0.6);
+          else { play(0, song.ts > 3 ? 1.9 : 0.9, tones, 0.5); if (song.ts > 3) play(2, 1.9, tones, 0.42); }
+        }
+      });
+    });
     // drums
     const ds = song.drums && A.DRUMS[song.drums.style];
     if (ds && !anySolo) {
-      const dg = ctx.createGain(); dg.gain.value = song.drums.vol == null ? 0.6 : song.drums.vol; dg.connect(master);
+      const dg = ctx.createGain(); dg.gain.value = (song.drums.vol == null ? 0.6 : song.drums.vol) * (song.drums.mute ? 0 : 1);
+      const dlo = ctx.createBiquadFilter(); dlo.type = 'lowshelf'; dlo.frequency.value = 120; dlo.gain.value = byp ? 0 : (song.drums.bass || 0);
+      const dhi = ctx.createBiquadFilter(); dhi.type = 'highshelf'; dhi.frequency.value = 5000; dhi.gain.value = byp ? 0 : (song.drums.treble || 0);
+      dg.connect(dlo); dlo.connect(dhi); dhi.connect(master);
+      if (opts.meters) { const an = ctx.createAnalyser(); an.fftSize = 512; dhi.connect(an); meters.drums = an; }
       const dr = ctx.createGain(); dr.gain.value = 0.15; dg.connect(dr); dr.connect(conv);
       const steps = song.ts === 3 ? 12 : 16;
       tl.secs.forEach(s => {
@@ -364,7 +406,8 @@
     // background singers (synthesized choir following the melody)
     const bg = A.bgvPlan(song), mel = song.parts.find(p => p.role === 'melody');
     if (bg && mel && !anySolo) {
-      const ch = channel({ vol: bg.blend === 'Big and bold' ? 0.9 : bg.blend === 'Even' ? 0.65 : 0.42, rev: 0.5, echo: 0.1, pan: 0 });
+      const bgm = song.vocals.bgvMix || {};
+      const ch = channel({ vol: (bg.blend === 'Big and bold' ? 0.9 : bg.blend === 'Even' ? 0.65 : 0.42) * (bgm.vol == null ? 1 : bgm.vol / 0.8), rev: bgm.rev == null ? 0.5 : bgm.rev, echo: bgm.echo == null ? 0.1 : bgm.echo, pan: bgm.pan || 0, bass: bgm.bass, treble: bgm.treble, mute: bgm.mute }, 'bgv');
       const count = bg.count === 'One' ? 1 : bg.count === 'A group' ? 6 : 3;
       const offs = [[2], [2, -2, 4], [2, -2, 4, 2, -2, 4]][count === 1 ? 0 : count === 3 ? 1 : 2];
       const vowel = bg.type === 'Oohs' ? 'ooh' : 'aah';
@@ -400,13 +443,21 @@
     if (vocalOn && !anySolo) {
       const V = song.vocals, src = ctx.createBufferSource();
       src.buffer = copyBuffer(ctx, V.leadBuffer);
-      const ch = channel({ vol: V.vol == null ? 0.9 : V.vol, rev: V.rev == null ? 0.3 : V.rev, echo: V.echo || 0.1, pan: 0 });
+      const ch = channel({ vol: V.vol == null ? 0.9 : V.vol, rev: V.rev == null ? 0.3 : V.rev, echo: V.echo || 0.1, pan: V.pan || 0, bass: V.bass, treble: V.treble }, 'vocal');
       src.connect(ch);
+      // sections where the voice is switched off on the build grid
+      if (V.off) tl.secs.forEach(x => { if (!V.off[x.sec.id]) return; const a = T(startBeatOf(x)), b = T(startBeatOf(x) + x.len); if (b <= t0) return; ch.gain.setValueAtTime(ch.gain.value, Math.max(t0, a)); ch.gain.setValueAtTime(0, Math.max(t0, a) + 0.005); ch.gain.setValueAtTime(V.vol == null ? 0.9 : V.vol, b); });
       const offsetBeats = only ? tl.secs.find(x => x.sec.id === only).start : from;
       const off = offsetBeats * spb + (V.offset || 0);
       if (off < src.buffer.duration) { src.start(t0, Math.max(0, off)); const e = t0 + src.buffer.duration - off; if (e > lastEnd) lastEnd = e; }
     }
-    return { startAt: t0, end: lastEnd, spb, master };
+    // fades for whole-song plays and downloads
+    if (!only && !byp && (M.fadeIn || M.fadeOut)) {
+      const musicEnd = T(tl.total - from) + 0.3;
+      if (M.fadeIn) { fader.gain.setValueAtTime(0.0001, t0); fader.gain.linearRampToValueAtTime(1, t0 + M.fadeIn); }
+      if (M.fadeOut && musicEnd - M.fadeOut > t0) { fader.gain.setValueAtTime(1, musicEnd - M.fadeOut); fader.gain.linearRampToValueAtTime(0.0001, musicEnd); lastEnd = Math.min(lastEnd, musicEnd + 0.1); }
+    }
+    return { startAt: t0, end: lastEnd, spb, master, meters };
   };
   function copyBuffer(ctx, b) {
     if (b.sampleRate === ctx.sampleRate || !ctx.createBuffer) return b;
@@ -431,10 +482,11 @@
   A.play = function (song, opts) {
     A.stop(); const ctx = A.ctx();
     const out = ctx.createGain(); out.connect(ctx.destination);
-    const r = A.schedule(ctx, song, Object.assign({}, opts, { dest: out }));
-    current = { master: out, startAt: r.startAt, end: r.end, spb: r.spb };
+    const r = A.schedule(ctx, song, Object.assign({ meters: true }, opts, { dest: out }));
+    current = { master: out, startAt: r.startAt, end: r.end, spb: r.spb, meters: r.meters };
     return current;
   };
+  A.meters = () => current && current.meters;
   A.isPlaying = () => !!current && A.ctx().currentTime < current.end;
   A.playhead = function () {
     if (!current) return null; const t = A.ctx().currentTime;
