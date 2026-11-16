@@ -80,7 +80,7 @@ const SUGGEST_TOOL = {
                 type: { type: "string" }, value: { type: "number" }, part: { type: "string" }, inst: { type: "string" }, ens: { type: "string" }, size: { type: "string" }, artic: { type: "string" },
                 kind: { type: "string" }, all: { type: "boolean" }, style: { type: "string" }, section: { type: "string" }, from: { type: "string" }, name: { type: "string" }, bars: { type: "number" },
                 count: { type: "string" }, where: { type: "string" }, mode: { type: "string" }, screen: { type: "string" }, text: { type: "string" }, echo: { type: "number" }, rev: { type: "number" }, level: { type: "string" },
-                preset: { type: "string" }, fadeIn: { type: "number" }, fadeOut: { type: "number" }, punch: { type: "number" }, room: { type: "string" }, vol: { type: "number" }
+                preset: { type: "string" }, sub: { type: "string" }, fadeIn: { type: "number" }, fadeOut: { type: "number" }, punch: { type: "number" }, room: { type: "string" }, vol: { type: "number" }
               },
               required: ["type"]
             }
@@ -107,7 +107,7 @@ const ACTIONS = `Allowed actions (use exact values):
 - {"type":"add_section","name":"Intro"|"Verse"|"Chorus"|"Bridge"|"Solo"|"Outro","bars":2|4|8}
 - {"type":"bgv","count":"One"|"A trio"|"A group","kind":"Oohs"|"Aahs"|"Harmony"|"Echo last word"|"Call and response","where":"Chorus only"|"Every section"|"Pick sections"}
 - {"type":"lead","section":"<section name>","mode":"voice"|"music"|"both"}
-- {"type":"style","name":one of ${JSON.stringify(STYLES)}}
+- {"type":"style","name":one of ${JSON.stringify(STYLES)},"sub":optional flavor, e.g. "Organ-heavy rock","Guitar wall","Piano rock","Organ soul","Harp and flute","Movie magic"}
 - {"type":"lyrics"} (opens lyric options for the current section)
 - {"type":"layer","preset":"Organ pad"|"String pad"|"Piano arpeggio"|"Guitar strum"|"Synth pulse"|"Choir ooh"|"Harp arpeggio"|"Brass swells"|"Electric piano"|"Low drone"} (adds a background layer that follows the chords)
 - {"type":"buildup"} (arranges layers/drums so the song starts small and builds to the last chorus)
@@ -212,6 +212,92 @@ async function brief(body) {
   return { about: clip(out.about, 200), mood: clip(out.mood, 80), words: clip(out.words, 80), title: clip(out.title, 60) };
 }
 
+// ---------- scan sheet music (photo → melody + chords) ----------
+const SCAN_TOOL = {
+  name: "lead_sheet",
+  description: "The melody and chord symbols read from a photo of sheet music.",
+  input_schema: {
+    type: "object",
+    properties: {
+      ok: { type: "boolean", description: "false if the image is not readable sheet music" },
+      reason: { type: "string", description: "If not ok: one friendly sentence on what to fix (e.g. 'The photo is blurry. Try again in better light, holding the phone flat.')" },
+      title: { type: "string", description: "Song title if printed on the page, else empty" },
+      keySignature: { type: "string", description: "Number of sharps or flats, e.g. '0', '1#', '2#', '3#', '1b', '2b', '3b', '4b'" },
+      timeSignature: { type: "string", description: "e.g. '4/4', '3/4', '2/4', '6/8', 'C' (common time), '2/2'" },
+      clef: { type: "string", description: "'treble' or 'bass' (the melody staff)" },
+      tempo: { type: "number", description: "Beats per minute if a metronome mark is printed, else 0" },
+      pickupBeats: { type: "number", description: "If the first bar is a pickup (anacrusis), how many beats long it is; else 0" },
+      bars: {
+        type: "array", maxItems: 48,
+        items: {
+          type: "object",
+          properties: {
+            chords: { type: "array", items: { type: "string" }, description: "Chord symbols written over this bar, in order (e.g. ['C', 'G7']). Empty if none." },
+            notes: {
+              type: "array",
+              items: {
+                type: "object",
+                properties: {
+                  pitch: { type: "string", description: "Scientific pitch with accidental as actually sounded, using # or b (e.g. 'E4', 'F#4', 'Bb3'), or 'rest'" },
+                  beats: { type: "number", description: "Length in quarter-note beats: whole 4, dotted half 3, half 2, dotted quarter 1.5, quarter 1, dotted eighth 0.75, eighth 0.5, sixteenth 0.25; triplet eighth 0.333" },
+                  tie: { type: "boolean", description: "true if tied to the next note" }
+                },
+                required: ["pitch", "beats"]
+              }
+            }
+          },
+          required: ["notes"]
+        }
+      },
+      truncated: { type: "boolean", description: "true if the page had more bars than you returned" }
+    },
+    required: ["ok"]
+  }
+};
+const SCAN_LIMIT = 25; const scanHits = new Map();
+function scanLimited(req) {
+  const ip = String(req.headers["x-forwarded-for"] || "").split(",")[0].trim() || "x", now = Date.now();
+  const list = (scanHits.get(ip) || []).filter(t => now - t < 3600e3); list.push(now); scanHits.set(ip, list);
+  if (scanHits.size > 5000) scanHits.clear();
+  return list.length > SCAN_LIMIT;
+}
+function normChord(c) {
+  const m = /^\s*([A-Ga-g])([#b♯♭]?)(.*)$/.exec(String(c || "")); if (!m) return "";
+  const root = m[1].toUpperCase() + (m[2] === "♯" ? "#" : m[2] === "♭" ? "b" : m[2]);
+  let q = m[3].replace(/\(.*?\)/g, "").replace(/\/.*$/, "").trim().toLowerCase();
+  let out = "";
+  if (/^(maj7|ma7|maj9|ma9|Δ|△|maj13)/i.test(q)) out = "maj7";
+  else if (/^(m7b5|ø|min7b5|-7b5)/.test(q) || /^(dim|o|°)/.test(q)) out = "dim";
+  else if (/^(m7|min7|-7|m9|min9|m11)/.test(q)) out = "m7";
+  else if (/^(m|min|-)/.test(q)) out = "m";
+  else if (/^(sus2)/.test(q)) out = "sus2";
+  else if (/^(sus|7sus|sus4)/.test(q)) out = /^7/.test(q) ? "7" : "sus4";
+  else if (/^(7|9|11|13|dom)/.test(q)) out = "7";
+  const flatName = { Db: "D♭", Eb: "E♭", Gb: "G♭", Ab: "A♭", Bb: "B♭", "D#": "E♭", "A#": "B♭", "G#": "A♭", "C#": "C#", "F#": "F#", Cb: "B", Fb: "E", "E#": "F", "B#": "C" };
+  return (flatName[root] || root) + out;
+}
+async function scan(body) {
+  const img = String(body.image || "");
+  const mm = /^data:(image\/(jpeg|png|webp|gif));base64,(.+)$/.exec(img);
+  if (!mm) return { ok: false, reason: "That picture didn't come through. Please try another photo." };
+  if (mm[3].length > 6e6) return { ok: false, reason: "That picture is too big. Try a smaller photo or a screenshot." };
+  const sys = `You read sheet music from photos for "The Music Studio". Transcribe ONLY the melody (the top line of the main staff) and the chord symbols written above it. Ignore lyrics completely, never output any words from the page except the title. Read carefully bar by bar: clef, key signature, time signature, each note's pitch (apply the key signature and any accidentals in the bar) and its length. Each full bar's beats must add up to the time signature. Return up to 48 bars. If the image is not sheet music or is too unclear to read, set ok to false and say what to fix.`;
+  const data = await anthropic({
+    model: MODEL, max_tokens: 8000, system: sys,
+    tools: [SCAN_TOOL], tool_choice: { type: "tool", name: "lead_sheet" },
+    messages: [{ role: "user", content: [{ type: "image", source: { type: "base64", media_type: mm[1], data: mm[3] } }, { type: "text", text: "Read the melody and chord symbols from this sheet music." }] }]
+  });
+  const block = (data.content || []).find(b => b.type === "tool_use");
+  const out = block && unstring(block.input);
+  if (!out) throw new Error("bad_shape");
+  if (out.ok === false || !Array.isArray(out.bars) || !out.bars.length) return { ok: false, reason: clip(out.reason, 200) || "I couldn't read music in that picture. Try a clearer, flatter photo of one page." };
+  const bars = out.bars.slice(0, 48).map(b => ({
+    chords: (Array.isArray(b.chords) ? b.chords : []).map(normChord).filter(Boolean).slice(0, 4),
+    notes: (Array.isArray(b.notes) ? b.notes : []).slice(0, 32).map(n => ({ pitch: clip(n.pitch, 6), beats: Math.max(0.125, Math.min(8, +n.beats || 1)), tie: !!n.tie }))
+  }));
+  return { ok: true, title: clip(out.title, 80), keySignature: clip(out.keySignature, 4), timeSignature: clip(out.timeSignature, 6), clef: out.clef === "bass" ? "bass" : "treble", tempo: Math.max(0, Math.min(240, +out.tempo || 0)), pickupBeats: Math.max(0, +out.pickupBeats || 0), bars, truncated: !!out.truncated };
+}
+
 // ---------- handler ----------
 module.exports = async (req, res) => {
   if (!allowedRequest(req)) return blockRequest(res);
@@ -224,6 +310,7 @@ module.exports = async (req, res) => {
     if (body.part === "suggest") return res.json(await suggest(body));
     if (body.part === "lyrics") return res.json(await lyrics(body));
     if (body.part === "brief") return res.json(await brief(body));
+    if (body.part === "scan") { if (scanLimited(req)) return res.status(429).json({ error: "slow_down", message: "That's a lot of scans for one hour. Take a short break and try again soon." }); return res.json(await scan(body)); }
     return res.status(400).json({ error: "unknown_part" });
   } catch (e) {
     console.error(e);
