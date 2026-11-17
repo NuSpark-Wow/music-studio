@@ -36,7 +36,7 @@
   }
   function lessonHtml(id) { const x = LESSONS[id]; return x ? shell(id, x.html(), x.side ? x.side() : '') : ''; }
   const rer = () => MS.render();
-  const staff = (notes, o) => MSS.render(Object.assign({ notes, clef: 'treble', key: 'C major', ts: 4, bars: 1, width: 640, paper: S.paper, color: S.paper === 'dark' ? '#f2b33d' : '#9a5f00' }, o || {})).svg;
+  const staff = (notes, o) => MSS.render(Object.assign({ notes, clef: 'treble', key: 'C major', ts: 4, bars: 1, width: 640, paper: S.paper, color: S.paper === 'dark' ? '#f2ede0' : '#141414' }, o || {})).svg;
   const card = (t, body) => `<div class="card col"><h1 style="font-size:26px">${t}</h1>${body}</div>`;
   const p = t => `<p style="margin:0;font-size:16px;line-height:1.6;color:#ddd8cc">${t}</p>`;
   const keyboard = (low, n, fn) => {
@@ -164,7 +164,7 @@
       const st = L.mel, used = MS.used(st.notes);
       return card('Write a melody', p('A <b>melody</b> is the tune you hum. Good melodies mix <b>steps</b> (next-door notes) with a few <b>leaps</b> (jumps). Ending on <b>C</b> sounds like coming home.') +
         `<div class="label">Your turn: write two measures (8 beats)</div>${staff(st.notes, { bars: 2, names: true })}
-        <div class="row" style="gap:6px">${[[2, 'Half'], [1, 'Quarter'], [0.5, 'Eighth']].map(([d, t]) => `<button class="btn sm ${st.len === d ? 'on' : ''}" onclick="MS.a.melLen(${d})">${t}</button>`).join('')}<button class="btn sm" onclick="MS.a.melUndo()">Undo last</button><button class="btn sm" onclick="L.mel.notes=[];MS.render()">Clear</button></div>
+        <div class="row" style="gap:6px">${[[2, 'Half'], [1, 'Quarter'], [0.5, 'Eighth']].map(([d, t]) => `<button class="btn sm ${st.len === d ? 'on' : ''}" onclick="MS.a.melLen(${d})">${MSS.icon(d)} ${t}</button>`).join('')}<button class="btn sm" onclick="MS.a.melUndo()">Undo last</button><button class="btn sm" onclick="L.mel.notes=[];MS.render()">Clear</button></div>
         ${keyboard(60, 9, 'MS.a.melKey')}
         <div class="small muted">${used} of 8 beats. ${used >= 8 ? (st.notes[st.notes.length - 1].p % 12 === 0 ? '✓ Ends on C. Home!' : 'Tip: try ending on C.') : 'Tap piano keys to add notes.'}</div>
         <div class="row"><button class="btn" onclick="MSA.previewSequence(L.mel.notes,'Grand piano',96)">▶ Play my melody</button>${used >= 8 ? '<button class="btn primary" onclick="MS.a.melSend()">Send to the studio</button>' : ''}</div>`);
@@ -198,7 +198,7 @@
       L.har.mel = mel; L.har.har = har;
       return card('Add a harmony', p('A <b>harmony</b> is a second tune that fits with the melody. The easiest one moves along with it, a <b>third below</b>: skip one letter down (E → C, G → E).') +
         `<div class="label">Melody ${L.mel && MS.used(L.mel.notes) >= 4 ? '(yours, from the melody lesson)' : ''}</div>${staff(mel, { bars: 2, names: true })}
-        ${L.har.on ? `<div class="label" style="color:var(--teal)">Harmony, a third below</div>${staff(har, { bars: 2, names: true, color: S.paper === 'dark' ? '#4fc3b8' : '#0b6f67' })}` : ''}
+        ${L.har.on ? `<div class="label" style="color:var(--teal)">Harmony, a third below</div>${staff(har, { bars: 2, names: true, ghost: mel, color: S.paper === 'dark' ? '#4fc3b8' : '#1f4fa8' })}<div class="tiny muted">The faint gray notes are the melody, drawn behind the harmony. See how each harmony note sits just under its melody note.</div>` : ''}
         <div class="row"><button class="btn" onclick="MSA.previewSequence(L.har.mel,'Grand piano',96)">▶ Melody alone</button>${L.har.on ? `<button class="btn primary" onclick="MS.a.harBoth()">▶ Both together</button><button class="btn" onclick="MS.sendToStudio({melody:L.har.mel,harmony:L.har.har})">Send to the studio</button>` : `<button class="btn primary" onclick="L.har.on=true;MS.render()">Add the harmony</button>`}</div>`);
     }
   };
@@ -222,8 +222,8 @@
   };
   MS.a.stAdd = b => { if (L.st.map.length < 12) L.st.map.push(b); if (L.st.map.length >= 4 && L.st.map.filter(x => x === 'Chorus').length >= 2) markDone('structure'); rer(); };
   MS.a.stDel = i => { L.st.map.splice(i, 1); rer(); };
-  MS.a.stSend = function () {
-    if (S.song && S.song.parts.some(pp => Object.values(pp.notes).some(a => a.length)) && !confirm('This replaces the sections in your current song with your new song map. Continue?')) return;
+  MS.a.stSend = async function () {
+    if (S.song && S.song.parts.some(pp => Object.values(pp.notes).some(a => a.length)) && !(await MS.ask('Use this song map?', 'This replaces the sections in your current song with your new song map.', [['Replace my sections', true, 'primary'], ['Cancel', null, '']]))) return;
     let v = 0; const names = L.st.map.map(b => b === 'Verse' ? 'Verse ' + (++v) : b);
     MS.sendToStudio({ sections: names });
   };

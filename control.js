@@ -12,7 +12,13 @@
     'Harp arpeggio': { inst: 'Harp', style: 'Arpeggio', ens: 'solo', d: 'Sparkling rippled chords.' },
     'Brass swells': { inst: 'French horn', style: 'Pad', ens: 'section', size: 'Chamber (12)', d: 'Big, noble held chords.' },
     'Electric piano': { inst: 'Electric piano', style: 'Block', ens: 'solo', d: 'Soft R&B chords on beats 1 and 3.' },
-    'Low drone': { inst: 'Cellos', style: 'Drone', ens: 'section', octave: -1, d: 'One deep note per bar under everything.' }
+    'Low drone': { inst: 'Cellos', style: 'Drone', ens: 'section', octave: -1, d: 'One deep note per bar under everything.' },
+    'Spanish strum': { inst: 'Spanish guitar', style: 'Strum', ens: 'solo', world: 1, d: 'Nylon-string guitar strumming your chords. Latin and flamenco.' },
+    'Tanpura drone': { inst: 'Tanpura', style: 'Drone', ens: 'solo', octave: 1, world: 1, d: 'The humming drone under Indian music.' },
+    'Koto ripple': { inst: 'Koto', style: 'Arpeggio', ens: 'solo', world: 1, d: 'Plucked Japanese strings rippling through the chords.' },
+    'Steel pan pulse': { inst: 'Steel drums', style: 'Pulse', ens: 'solo', world: 1, d: 'Bright Caribbean steel drums bouncing on the beat.' },
+    'Accordion pad': { inst: 'Accordion', style: 'Pad', ens: 'solo', world: 1, d: 'Squeezebox chords. Folk, polka, French café.' },
+    'Kalimba sparkle': { inst: 'Kalimba', style: 'Arpeggio', ens: 'solo', octave: 1, world: 1, d: 'African thumb piano twinkling on top.' }
   };
   MS.LAYER_PRESETS = PRESETS;
   let raf = null;
@@ -20,6 +26,7 @@
   function ensure(s) {
     s.layers = s.layers || []; s.master = Object.assign({ vol: 0.9, punch: 0, room: 'Studio', fadeIn: 0, fadeOut: 0, bypass: false }, s.master || {});
     s.vocals.bgvMix = s.vocals.bgvMix || { vol: 0.8, rev: 0.5, echo: 0.1, pan: 0 };
+    s.perc = Object.assign({ on: {}, off: {}, vol: 0.55 }, s.perc || {});
     return s;
   }
   MS.addLayer = function (s, name) {
@@ -35,18 +42,22 @@
     if (s.chordPart.on) out.push({ key: 'chords', name: 'Chords', sub: s.chordPart.inst, color: '#d9d4c8', obj: s.chordPart, path: 'chords', grid: true });
     s.layers.forEach(L => out.push({ key: L.id, name: L.name, sub: L.inst + ' · ' + L.style, color: L.color, obj: L, path: 'L:' + L.id, grid: true, layer: true }));
     if (s.drums.style !== 'None') out.push({ key: 'drums', name: 'Drums', sub: s.drums.style, color: '#9aa0ad', obj: s.drums, path: 'drums', grid: true });
+    const pc = Object.keys(s.perc.on).filter(k => s.perc.on[k] && A().PERC[k]);
+    pc.forEach(k => out.push({ key: 'perc:' + k, name: A().PERC[k].name, sub: 'Percussion', color: '#c8b48a', obj: s.perc, path: 'perc:' + k, grid: true, gridOnly: true }));
+    if (pc.length) out.push({ key: 'perc', name: 'Percussion', sub: pc.map(k => A().PERC[k].name).join(', '), color: '#c8b48a', obj: s.perc, path: 'perc', grid: false });
     if (s.vocals.bgv.on) out.push({ key: 'bgv', name: 'Background singers', sub: s.vocals.bgv.count + ' · ' + s.vocals.bgv.type, color: '#b39dfa', obj: s.vocals.bgvMix, path: 'bgv', grid: true });
     if (MS.vbuf) out.push({ key: 'vocal', name: 'Lead vocal', sub: 'Your voice', color: '#f08a6b', obj: s.vocals, path: 'vocal', grid: true });
     return out;
   }
   function objOf(s, path) {
-    if (path === 'chords') return s.chordPart; if (path === 'drums') return s.drums; if (path === 'bgv') return s.vocals.bgvMix; if (path === 'vocal') return s.vocals;
+    if (path === 'chords') return s.chordPart; if (path === 'drums') return s.drums; if (path === 'perc') return s.perc; if (path === 'bgv') return s.vocals.bgvMix; if (path === 'vocal') return s.vocals;
     if (path.startsWith('L:')) return s.layers.find(L => 'L:' + L.id === path);
     return s.parts.find(p => 'p:' + p.id === path);
   }
   // is a channel playing in a section? (grid cell)
   function isOn(s, c, secId) {
     if (c.key === 'drums') return !(s.drums.skip || {})[secId];
+    if (c.key.startsWith('perc:')) return !(s.perc.off[c.key.slice(5)] || {})[secId];
     if (c.key === 'bgv') { const g = s.vocals.bgv; return g.where === 'Every section' || (g.where === 'Chorus only' ? /chorus/i.test(s.sections.find(x => x.id === secId).name) : (g.picked || []).includes(secId)); }
     if (c.key === 'vocal') return !(s.vocals.off || {})[secId];
     return !(c.obj.off || {})[secId];
@@ -55,6 +66,7 @@
     MS.change(s => {
       ensure(s);
       if (path === 'drums') { s.drums.skip[secId] = !s.drums.skip[secId]; return; }
+      if (path.startsWith('perc:')) { const k = path.slice(5), o = s.perc.off[k] = s.perc.off[k] || {}; o[secId] = !o[secId]; return; }
       if (path === 'bgv') { const g = s.vocals.bgv; const cur = s.sections.filter(x => isOn(s, { key: 'bgv' }, x.id)).map(x => x.id); g.where = 'Pick sections'; const i = cur.indexOf(secId); i < 0 ? cur.push(secId) : cur.splice(i, 1); g.picked = cur; return; }
       if (path === 'vocal') { s.vocals.off = s.vocals.off || {}; s.vocals.off[secId] = !s.vocals.off[secId]; return; }
       const o = objOf(s, path); o.off = o.off || {}; o.off[secId] = !o.off[secId];
@@ -86,7 +98,7 @@
         <div class="row"><button class="btn sm" onclick="MS.a.buildUp()">Build it up for me</button><span class="tiny muted">Fewer sounds early, everything in the last chorus.</span></div></div>
 
       <div class="card col" style="margin-top:12px"><div class="row" style="gap:6px"><div class="label">3 · Mixing board</div>${MS.helpBtn('board')}</div>
-        <div class="mixer" style="grid-template-columns:repeat(auto-fill,minmax(${adv ? 190 : 160}px,1fr))">${ch.map(c => strip(c, basic, adv)).join('')}</div>
+        <div class="mixer" style="grid-template-columns:repeat(auto-fill,minmax(${adv ? 190 : 160}px,1fr))">${ch.filter(c => !c.gridOnly).map(c => strip(c, basic, adv)).join('')}</div>
         <div class="tiny muted">Move the melody or your voice a little above everything else. Solo plays one channel alone; Mute silences it.</div></div>
 
       <div class="card col" style="margin-top:12px;border-color:#3d4a5c"><div class="row" style="gap:6px"><div class="label">4 · Master (post-production)</div>${MS.helpBtn('master')}</div>
@@ -108,9 +120,9 @@
     return `<div class="strip" style="border-top:3px solid ${c.color}"><div class="row" style="justify-content:space-between;gap:4px"><b style="color:var(--ink)">${esc(c.name)}</b><span class="tiny">${esc(c.sub)}</span></div>
       <div class="meter" style="height:8px"><i data-meter="${c.key}" style="background:${c.color}"></i></div>
       ${sl('vol', 'Fader (volume)', 0, 1.2, 0.05, 0.8)}
-      ${basic ? '' : sl('pan', 'Left · Right', -1, 1, 0.1, 0) + (c.key === 'drums' ? '' : sl('echo', 'Echo', 0, 0.8, 0.05, 0) + sl('rev', 'Reverb', 0, 1, 0.05, 0.25))}
-      ${adv ? sl('bass', 'Bass (low EQ)', -12, 12, 1, 0) + sl('treble', 'Treble (high EQ)', -12, 12, 1, 0) : ''}
-      <div class="row" style="gap:6px">${['vocal', 'bgv', 'drums'].includes(c.key) ? '' : `<button class="btn sm adv" aria-pressed="${!!o.solo}" style="${o.solo ? 'background:var(--amber);color:#1a1405' : ''}" onclick="MS.a.chtog('${path}','solo')">Solo</button>`}${c.key === 'vocal' ? `<button class="btn sm" aria-pressed="${!!o.leadMute}" style="${o.leadMute ? 'background:#5a2a20' : ''}" onclick="MS.a.chtog('${path}','leadMute')">${o.leadMute ? 'Muted' : 'Mute'}</button>` : `<button class="btn sm" aria-pressed="${!!o.mute}" style="${o.mute ? 'background:#5a2a20' : ''}" onclick="MS.a.chtog('${path}','mute')">${o.mute ? 'Muted' : 'Mute'}</button>`}</div></div>`;
+      ${basic || c.key === 'perc' ? '' : sl('pan', 'Left · Right', -1, 1, 0.1, 0) + (c.key === 'drums' ? '' : sl('echo', 'Echo', 0, 0.8, 0.05, 0) + sl('rev', 'Reverb', 0, 1, 0.05, 0.25))}
+      ${adv && c.key !== 'perc' ? sl('bass', 'Bass (low EQ)', -12, 12, 1, 0) + sl('treble', 'Treble (high EQ)', -12, 12, 1, 0) : ''}
+      <div class="row" style="gap:6px">${['vocal', 'bgv', 'drums', 'perc'].includes(c.key) ? '' : `<button class="btn sm adv" aria-pressed="${!!o.solo}" style="${o.solo ? 'background:var(--amber);color:#1a1405' : ''}" onclick="MS.a.chtog('${path}','solo')">Solo</button>`}${c.key === 'vocal' ? `<button class="btn sm" aria-pressed="${!!o.leadMute}" style="${o.leadMute ? 'background:#5a2a20' : ''}" onclick="MS.a.chtog('${path}','leadMute')">${o.leadMute ? 'Muted' : 'Mute'}</button>` : `<button class="btn sm" aria-pressed="${!!o.mute}" style="${o.mute ? 'background:#5a2a20' : ''}" onclick="MS.a.chtog('${path}','mute')">${o.mute ? 'Muted' : 'Mute'}</button>`}</div></div>`;
   }
   MS.a.chset = (path, k, v) => MS.change(s => { ensure(s); objOf(s, path)[k] = v; }, { quiet: true });
   MS.a.chtog = (path, k) => MS.change(s => { ensure(s); const o = objOf(s, path); o[k] = !o[k]; });
@@ -120,7 +132,8 @@
   MS.a.layerMenu = function () {
     MS.modal(`<div class="row" style="justify-content:space-between"><h2>Add a background layer</h2><div class="row">${MS.helpBtn('layers')}<button class="btn sm ghost" onclick="MS.closeModal()">Close</button></div></div>
       <div class="small muted" style="margin-top:6px">Each layer plays your chords in its own way. Hear it first, then add it.</div>
-      <div class="grid" style="margin-top:12px">${Object.entries(PRESETS).map(([k, p]) => `<div class="opt"><b>${k}</b><span class="small" style="color:#ddd8cc">${p.d}</span><span class="tiny muted">${p.inst}${p.ens === 'section' ? ' section' : ''} · ${p.style}</span><div class="row"><button class="btn sm" onclick="MS.a.hearLayer(${esc(JSON.stringify(k))})">▶ Hear it</button><button class="btn sm primary" onclick="MS.a.addLayer(${esc(JSON.stringify(k))})">Add</button></div></div>`).join('')}</div>`);
+      ${[['', e => !e[1].world], ['🌍 World layers', e => e[1].world]].map(([title, f]) => `${title ? `<div class="label" style="margin-top:16px">${title}</div><div class="tiny muted">Built-in approximations of instruments from around the world.</div>` : ''}<div class="grid" style="margin-top:12px">${Object.entries(PRESETS).filter(f).map(([k, p]) => `<div class="opt"><b>${k}</b><span class="small" style="color:#ddd8cc">${p.d}</span><span class="tiny muted">${p.inst}${p.ens === 'section' ? ' section' : ''} · ${p.style}</span><div class="row"><button class="btn sm" onclick="MS.a.hearLayer(${esc(JSON.stringify(k))})">▶ Hear it</button><button class="btn sm primary" onclick="MS.a.addLayer(${esc(JSON.stringify(k))})">Add</button></div></div>`).join('')}</div>`).join('')}
+      <div class="small muted" style="margin-top:14px">Want a tambourine, shaker, congas or tabla? Turn them on in the Drums card in the studio, then pick which sections they play in on the build grid.</div>`);
   };
   MS.a.hearLayer = function (k) {
     const s = ensure(JSON.parse(JSON.stringify(S.song))); s.vocals.leadBuffer = null;
@@ -138,6 +151,7 @@
         const intro = /intro/i.test(x.name), verse = /verse/i.test(x.name), outro = /outro/i.test(x.name), first = i < n / 2;
         s.layers.forEach((L, j) => { L.off = L.off || {}; L.off[x.id] = intro ? j > 0 : verse && first ? j > 0 : outro ? j > 0 : false; if (lastChorus && x.id === lastChorus.id) L.off[x.id] = false; });
         s.drums.skip[x.id] = intro || outro;
+        Object.keys(s.perc.on).forEach(k => { const o = s.perc.off[k] = s.perc.off[k] || {}; o[x.id] = intro || outro || (verse && first); });
         const h = s.parts.find(p => p.role === 'harmony'); if (h) { h.off = h.off || {}; h.off[x.id] = intro || (verse && first); }
       });
     });

@@ -21,8 +21,8 @@
       </div>
       ${songMap()}
       <div class="split" style="margin-top:12px"><div class="main">
-        ${s.parts.map(x => partCard(x) + (x.id === S.part ? `<div class="mobile-only">${notesCard()}</div>` : '')).join('')}
-        <div class="row"><button class="btn sm" onclick="MS.a.addPart()">+ Add a part</button></div>
+        ${s.parts.map(x => partCard(x) + (x.id === S.part ? `<div class="mobile-only pinwrap"><div class="pinstaff"><div class="tiny" style="color:var(--amber);margin-bottom:4px">${esc(x.name)} · ${esc(sec.name)} <span class="muted">(stays here while you pick notes)</span></div><div class="staffbox" data-pid="${x.id}" onclick="event.stopPropagation();MS.a.staffTap(event,'${x.id}')"></div><div class="pinbar"></div></div>${notesCard()}</div>` : '')).join('')}
+        <div class="row"><button class="btn sm" onclick="MS.a.addPart()">+ Add a part</button>${s.parts.some(x => x.role !== 'melody') ? `<label class="row small"><input type="checkbox" ${ghostGlobal() ? 'checked' : ''} onchange="MS.a.ghostAll(this.checked)"> Show the melody faintly behind the other parts</label>${MS.helpBtn('ghost', '?')}` : ''}</div>
         ${chordsCard()}
         ${transport()}
         <div class="card adv">${mixer()}</div>
@@ -32,7 +32,7 @@
         ${drumsCard()}
       </div></div>` + MS.footer();
     },
-    after() { drawStaffs(); drawKeys(); },
+    after() { drawStaffs(); drawKeys(); document.querySelectorAll('.staffbox').forEach(bindDrag); },
     key(e) {
       const k = e.key;
       if (k === ' ') { e.preventDefault(); A().isPlaying() ? stop() : MS.a.play(false); return; }
@@ -100,9 +100,9 @@
   MS.a._rename = function () { const v = document.getElementById('rn').value.trim().slice(0, 24); MS.closeModal(); if (v) MS.change(s => { s.sections.find(x => x.id === S.sec).name = v; }); };
   MS.a.moveSection = d => MS.change(s => { const i = s.sections.findIndex(x => x.id === S.sec), j = i + d; if (j < 0 || j >= s.sections.length) return; const [x] = s.sections.splice(i, 1); s.sections.splice(j, 0, x); });
   MS.a.bars = d => MS.change(s => { const x = s.sections.find(y => y.id === S.sec); x.bars = Math.max(1, Math.min(16, x.bars + d)); });
-  MS.a.delSection = function () {
+  MS.a.delSection = async function () {
     if (S.song.sections.length < 2) return MS.toast('A song needs at least one section.');
-    if (!confirm('Delete “' + MS.sec().name + '” and its notes?')) return;
+    if (!(await MS.ask('Delete “' + MS.sec().name + '”?', 'This removes the section and every note in it. You can press Undo right after if you change your mind.', [['Delete section', true, 'danger'], ['Keep it', null, '']]))) return;
     MS.change(s => { const i = s.sections.findIndex(x => x.id === S.sec); s.sections.splice(i, 1); S.sec = s.sections[Math.max(0, i - 1)].id; });
   };
 
@@ -111,21 +111,22 @@
     const active = p.id === S.part, s = S.song, ns = (p.notes[S.sec] || []), full = MS.used(ns), len = MS.sec().bars * s.ts;
     const I = A().INST[p.inst] || {};
     const role = p.role === 'harmony' ? `<button class="btn sm" onclick="event.stopPropagation();MS.a.harmony('${p.id}')">Suggest a harmony</button>${MS.helpBtn('harmony', '?')}` : p.role === 'bass' ? `<button class="btn sm mod" onclick="event.stopPropagation();MS.a.bassLine()">Make a bass line</button>${MS.helpBtn('bass', '?')}` : '';
+    const gh = p.role !== 'melody' && ghostGlobal() ? `<button class="btn sm ghost" aria-pressed="${p.ghost !== false}" onclick="event.stopPropagation();MS.a.ghostPart('${p.id}')" title="Show the melody faintly on this staff">${p.ghost !== false ? 'Melody: shown' : 'Melody: hidden'}</button>` : '';
     return `<div class="card part tight ${active ? 'active' : ''}" onclick="MS.a.activate('${p.id}')">
       <div class="row" style="justify-content:space-between"><div class="row" style="gap:8px"><span class="dot" style="background:${p.color}"></span><b style="font-family:var(--H);font-size:17px">${esc(p.name)}</b>
       <button class="btn sm ghost" onclick="event.stopPropagation();MS.a.pickInst('${p.id}')" title="Change instrument">${esc(p.inst)}${I.ens ? (p.ens === 'section' ? ' · section' : ' · soloist') : ''} ▾</button>
       ${active ? '<span class="tiny" style="color:var(--amber)">Adding notes here</span>' : '<span class="tiny muted">Tap to add notes here</span>'}</div>
-      <div class="row" style="gap:6px">${role}<button class="btn sm adv" aria-pressed="${!!p.solo}" style="${p.solo ? 'background:var(--amber);color:#1a1405' : ''}" onclick="event.stopPropagation();MS.a.solo('${p.id}')">Solo</button><button class="btn sm" aria-pressed="${!!p.mute}" style="${p.mute ? 'background:#5a2a20' : ''}" onclick="event.stopPropagation();MS.a.mute('${p.id}')">${p.mute ? 'Muted' : 'Mute'}</button>
+      <div class="row" style="gap:6px">${gh}${role}<button class="btn sm adv" aria-pressed="${!!p.solo}" style="${p.solo ? 'background:var(--amber);color:#1a1405' : ''}" onclick="event.stopPropagation();MS.a.solo('${p.id}')">Solo</button><button class="btn sm" aria-pressed="${!!p.mute}" style="${p.mute ? 'background:#5a2a20' : ''}" onclick="event.stopPropagation();MS.a.mute('${p.id}')">${p.mute ? 'Muted' : 'Mute'}</button>
       <button class="btn sm" onclick="event.stopPropagation();MS.a.playPart('${p.id}')" aria-label="Play this part">▶</button><button class="btn sm mod" onclick="event.stopPropagation();MS.a.clearPart('${p.id}')">Clear</button>${s.parts.length > 1 && !['melody'].includes(p.role) ? `<button class="btn sm adv" onclick="event.stopPropagation();MS.a.removePart('${p.id}')" aria-label="Remove part">✕</button>` : ''}</div></div>
-      <div class="staffbox" data-pid="${p.id}" onclick="event.stopPropagation();MS.a.staffTap(event,'${p.id}')"></div>
+      <div class="staffbox ${active ? 'desktop-only' : ''}" data-pid="${p.id}" onclick="event.stopPropagation();MS.a.staffTap(event,'${p.id}')"></div>
       <div class="tiny muted">${full ? `${fmtBeats(full)} of ${len} beats filled` : (p.role === 'melody' ? 'Empty. Tap the staff, use the piano, or press Sing.' : p.role === 'harmony' ? 'Empty. Press “Suggest a harmony”, or sing or tap your own.' : 'Empty. Tap the staff or make a bass line.')}${full > len ? ' · extra notes past the end are not played' : ''}</div></div>`;
   }
   const fmtBeats = b => (Math.round(b * 4) / 4).toString();
   MS.a.activate = id => { if (S.part !== id) { S.part = id; S.sel = null; MS.render(); } };
   MS.a.solo = id => MS.change(s => { const p = s.parts.find(x => x.id === id); p.solo = !p.solo; });
   MS.a.mute = id => MS.change(s => { const p = s.parts.find(x => x.id === id); p.mute = !p.mute; });
-  MS.a.clearPart = id => { if (confirm('Clear this part in “' + MS.sec().name + '”?')) MS.change(s => { s.parts.find(x => x.id === id).notes[S.sec] = []; S.sel = null; }); };
-  MS.a.removePart = id => { if (confirm('Remove this part from the whole song?')) MS.change(s => { s.parts = s.parts.filter(x => x.id !== id); S.part = s.parts[0].id; }); };
+  MS.a.clearPart = async id => { const p = S.song.parts.find(x => x.id === id); if (await MS.ask('Clear ' + p.name + ' in “' + MS.sec().name + '”?', 'Only this part in this section is erased. Undo brings it back.', [['Clear it', true, 'danger'], ['Cancel', null, '']])) MS.change(s => { s.parts.find(x => x.id === id).notes[S.sec] = []; S.sel = null; }); };
+  MS.a.removePart = async id => { const p = S.song.parts.find(x => x.id === id); if (await MS.ask('Remove ' + p.name + '?', 'This takes the part out of the whole song, in every section.', [['Remove part', true, 'danger'], ['Keep it', null, '']])) MS.change(s => { s.parts = s.parts.filter(x => x.id !== id); S.part = s.parts[0].id; }); };
   MS.a.addPart = function () {
     MS.change(s => {
       const used = s.parts.map(p => p.color), col = ['#b39dfa', '#7fb2ff', '#d9d4c8', '#4fc3b8', '#f08a6b'].find(c => !used.includes(c)) || '#d9d4c8';
@@ -162,22 +163,139 @@
 
   // ---------- staff tapping & editing ----------
   const maps = {};
+  // the melody, shifted into this part's range, drawn faintly behind harmony and bass
+  function ghostGlobal() { return S.view.ghost != null ? S.view.ghost : S.level !== 'Advanced'; }
+  function ghostFor(p, secId) {
+    if (p.role === 'melody' || p.ghost === false || !ghostGlobal()) return null;
+    const mel = S.song.parts.find(x => x.role === 'melody'); if (!mel || mel === p) return null;
+    const ns = (mel.notes[secId] || []), ps = ns.filter(n => n.p != null).map(n => n.p); if (!ps.length) return null;
+    const avg = ps.reduce((a, b) => a + b, 0) / ps.length;
+    const sh = p.clef === 'bass' ? -12 * Math.max(1, Math.round((avg - 50) / 12)) : (avg > 79 ? -12 : avg < 57 ? 12 : 0);
+    return ns.map(n => ({ p: n.p == null ? null : n.p + sh, d: n.d }));
+  }
+  MS.a.ghostAll = v => { S.view.ghost = v; MS.render(); };
+  MS.a.ghostPart = id => MS.change(s => { const p = s.parts.find(x => x.id === id); p.ghost = p.ghost === false ? true : false; });
+  // parts you're not editing are drawn a little lighter, so the active staff stands out
+  function soften(hex) {
+    const bg = S.paper === 'dark' ? [29, 31, 37] : [251, 250, 246], c = hex.replace('#', ''), v = [0, 2, 4].map(i => parseInt(c.substr(i, 2), 16));
+    return '#' + v.map((x, i) => Math.round(x * 0.55 + bg[i] * 0.45).toString(16).padStart(2, '0')).join('');
+  }
   function drawStaffs(playBeat) {
     const s = S.song, sec = MS.sec();
     document.querySelectorAll('.staffbox').forEach(el => {
       const p = s.parts.find(x => x.id === el.dataset.pid); if (!p) return;
-      const r = MSS.render({ notes: p.notes[sec.id] || [], clef: p.clef, key: s.key, ts: s.ts, bars: sec.bars, width: el.clientWidth || 800, minBar: (el.clientWidth || 800) < 600 ? 120 : 150, chords: p.role === 'melody' ? s.chords[sec.id] : null, names: S.level === 'Basic' || S.view.names !== false && S.level === 'Moderate', sel: p.id === S.part ? S.sel : null, color: MS.noteColor(p), paper: S.paper, play: playBeat, dyn: S.level === 'Advanced' ? p.dyn[sec.id] : null, lyrics: p.role === 'melody' ? s.vocals.lyrics[sec.id] : null, label: p.name + ' staff' });
-      el.innerHTML = r.svg; maps[p.id] = r.map;
+      if (!el.offsetParent) { el.innerHTML = ''; el._map = null; return; } // hidden copy (phone vs desktop)
+      const r = MSS.render({ notes: p.notes[sec.id] || [], ghost: ghostFor(p, sec.id), clef: p.clef, key: s.key, ts: s.ts, bars: sec.bars, width: el.clientWidth || 800, minBar: (el.clientWidth || 800) < 600 ? 120 : 150, chords: p.role === 'melody' ? s.chords[sec.id] : null, names: S.level === 'Basic' || S.view.names !== false && S.level === 'Moderate', sel: p.id === S.part ? S.sel : null, color: p.id === S.part || s.parts.length < 2 ? MS.noteColor(p) : soften(MS.noteColor(p)), paper: S.paper, play: playBeat, dyn: S.level === 'Advanced' ? p.dyn[sec.id] : null, lyrics: p.role === 'melody' ? s.vocals.lyrics[sec.id] : null, label: p.name + ' staff' });
+      // keep a fixed touch layer so a finger stays "on" the staff while the drawing underneath changes
+      if (!el.querySelector('.sv')) el.innerHTML = '<div class="sv"><div class="svgh"></div><div class="hit"></div></div><div class="tbw"></div>';
+      el.querySelector('.svgh').innerHTML = r.svg; el._map = r.map; maps[p.id] = r.map;
+      const pinned = el.closest('.pinstaff'), tb = playBeat == null ? toolbar(el, p, r.map) : null;
+      if (pinned) { const bar = pinned.querySelector('.pinbar'); if (bar && tb != null) bar.innerHTML = tb; }
+      else if (tb != null) el.querySelector('.tbw').innerHTML = tb;
+      if (pinned && playBeat == null) { // scroll the pinned staff to the line you're working on
+        const h = (r.map.heads || []).find(x => x.idx === S.sel) || (r.map.heads || []).slice(-1)[0], k = (el.clientWidth || r.map.width) / r.map.width;
+        if (h) { const lm = r.map.lines[h.L]; el.scrollTop = Math.max(0, lm.top * k - 4); }
+      }
     });
+  }
+  // a small toolbar that pops up right above the selected note (or a "copy" chip over a tapped melody ghost note)
+  function toolbar(el, p, map) {
+    const svgW = el.clientWidth || map.width, k = svgW / map.width;
+    const g = S.ghostPick && S.ghostPick.pid === p.id ? S.ghostPick.g : null;
+    if (g) {
+      const lm = map.lines[g.L]; if (!lm) return '';
+      const pin = !!el.closest('.pinstaff');
+      return `<div class="ntb ${pin ? 'inbar' : ''}" style="${pin ? '' : `left:${Math.max(4, Math.min(svgW - 210, g.x * k - 100))}px;top:${g.L === 0 ? lm.bottom * k - 4 : lm.top * k}px;${g.L === 0 ? 'transform:none' : ''}`}" onclick="event.stopPropagation()"><button class="btn sm primary" onclick="MS.a.copyGhost()">＋ Copy this note (${MSS.name(g.p, S.song.key)})</button><button class="btn sm ghost" onclick="MS.a.noGhost()" aria-label="Close">✕</button></div>`;
+    }
+    if (p.id !== S.part || S.sel == null) return '';
+    const h = (map.heads || []).find(x => x.idx === S.sel); if (!h) return '';
+    const n = (p.notes[S.sec] || [])[S.sel]; if (!n) return '';
+    const lm = map.lines[h.L], lens = [4, 2, 1, 0.5].concat(S.level === 'Basic' ? [] : [1.5]);
+    const w = 44 * (lens.length + 5), pinned = !!el.closest('.pinstaff');
+    return `<div class="ntb ${pinned ? 'inbar' : ''}" style="${pinned ? '' : `left:${Math.max(4, Math.min(svgW - w - 4, h.x * k - w / 2))}px;top:${h.L === 0 ? lm.bottom * k - 4 : lm.top * k}px;${h.L === 0 ? 'transform:none' : ''}`}" onclick="event.stopPropagation()" role="toolbar" aria-label="Change this note">
+      ${n.p != null ? `<button class="btn sm" onclick="MS.a.step(1)" aria-label="Higher">▲</button><button class="btn sm" onclick="MS.a.step(-1)" aria-label="Lower">▼</button>` : ''}
+      ${lens.map(d => `<button class="btn sm ${Math.abs(n.d - d) < 1e-6 ? 'on' : ''}" onclick="MS.a.len(${d})" aria-label="${(LENS.find(l => l[0] === d) || [0, ''])[1]} note">${MSS.icon(d, null, n.p == null)}</button>`).join('')}
+      <button class="btn sm" onclick="MS.a.toggleRest()" aria-label="${n.p == null ? 'Make it a note' : 'Make it a rest'}">${n.p == null ? '♪' : MSS.icon(1, null, true)}</button>
+      <button class="btn sm" onclick="MS.a.del()" aria-label="Delete note">🗑</button><button class="btn sm ghost" onclick="MS.a.deselect()" aria-label="Done">✕</button></div>`;
+  }
+  MS.a.noGhost = () => { S.ghostPick = null; drawStaffs(); };
+  MS.a.copyGhost = function () {
+    const gp = S.ghostPick; if (!gp) return; S.ghostPick = null;
+    const g = gp.g, p = S.song.parts.find(x => x.id === gp.pid), len = MS.sec().bars * S.song.ts;
+    MS.change(() => {
+      const ns = MS.notesOf(p), used = MS.used(ns);
+      if (g.beat >= used - 1e-6) {
+        if (g.beat - used > 1e-6) ns.push({ p: null, d: g.beat - used });
+        ns.push({ p: g.p, d: Math.min(g.d, len - g.beat) }); S.sel = ns.length - 1; return;
+      }
+      let b = 0, i = 0; for (; i < ns.length; i++) { if (b + ns[i].d > g.beat + 1e-6) break; b += ns[i].d; }
+      const n = ns[i]; if (!n) return;
+      if (Math.abs(b - g.beat) < 1e-6) { n.p = g.p; S.sel = i; return; }
+      if (n.p == null) { // split the rest around the copied note
+        const before = g.beat - b, dd = Math.min(g.d, n.d - before), after = n.d - before - dd;
+        const add = [{ p: null, d: before }, { p: g.p, d: dd }].concat(after > 1e-6 ? [{ p: null, d: after }] : []);
+        ns.splice(i, 1, ...add); S.sel = i + 1; return;
+      }
+      n.p = g.p; S.sel = i;
+    });
+    S.part = p.id; A().preview(g.p, p.inst);
+    MS.toast('Copied. Drag it up or down to a harmony note, or use ▲ ▼.');
+  };
+  // drag a note up or down: mouse = press and drag; touch = press and hold, then slide
+  let suppressClick = 0;
+  function bindDrag(el) {
+    if (el._drag) return; el._drag = true;
+    const pid = el.dataset.pid; let st = null, hold = null, t0 = null, dragging = false;
+    const toSvg = (cx, cy) => { const svg = el.querySelector('svg'), map = el._map; if (!svg || !map) return null; const r = svg.getBoundingClientRect(); return { x: (cx - r.left) * (map.width / r.width), y: (cy - r.top) * (map.H / r.height), map }; };
+    const begin = (cx, cy) => {
+      if (S.part !== pid) return false; const c = toSvg(cx, cy); if (!c) return false;
+      const hit = MSS.pick(c.map, c.x, c.y); if (hit.noteIndex == null || !hit.onHead) return false;
+      const n = MS.notesOf(MS.part())[hit.noteIndex]; if (!n || n.p == null) return false;
+      st = { idx: hit.noteIndex, orig: n.p, cur: n.p, L: MSS.lineAtY(c.map, c.y), moved: false }; return true;
+    };
+    const move = (cx, cy) => {
+      if (!st) return; const c = toSvg(cx, cy); if (!c) return;
+      const m = MSS.stepToMidi(MSS.stepAtY(c.map, st.L, c.y), S.song.key);
+      if (m !== st.cur) { st.cur = m; st.moved = true; const n = MS.notesOf(MS.part())[st.idx]; if (n) n.p = m; S.sel = st.idx; drawStaffs(); A().preview(m, partInst(), { dur: 0.25 }); }
+    };
+    const end = () => {
+      if (!st) return; const s0 = st; st = null;
+      const n = MS.notesOf(MS.part())[s0.idx];
+      if (s0.moved && n) { n.p = s0.orig; MS.change(() => { n.p = s0.cur; S.sel = s0.idx; }); suppressClick = Date.now(); return true; }
+      return false;
+    };
+    el.addEventListener('mousedown', e => {
+      if (e.button !== 0 || e.target.closest('.ntb') || !begin(e.clientX, e.clientY)) return; e.preventDefault();
+      const mm = ev => move(ev.clientX, ev.clientY), mu = () => { window.removeEventListener('mousemove', mm); window.removeEventListener('mouseup', mu); end(); };
+      window.addEventListener('mousemove', mm); window.addEventListener('mouseup', mu);
+    });
+    el.addEventListener('touchstart', e => {
+      if (e.touches.length !== 1 || e.target.closest('.ntb')) return; const t = e.touches[0]; t0 = { x: t.clientX, y: t.clientY }; clearTimeout(hold);
+      hold = setTimeout(() => { if (t0 && begin(t0.x, t0.y)) { dragging = true; el.classList.add('dragging'); if (navigator.vibrate) navigator.vibrate(12); S.sel = st.idx; drawStaffs(); A().preview(st.orig, partInst(), { dur: 0.25 }); } }, 280);
+    }, { passive: true });
+    el.addEventListener('touchmove', e => {
+      const t = e.touches[0];
+      if (dragging) { e.preventDefault(); move(t.clientX, t.clientY); }
+      else if (t0 && Math.hypot(t.clientX - t0.x, t.clientY - t0.y) > 8) { clearTimeout(hold); t0 = null; }
+    }, { passive: false });
+    const tend = e => {
+      clearTimeout(hold); t0 = null;
+      if (dragging) { dragging = false; el.classList.remove('dragging'); const idx = st && st.idx; if (!end() && idx != null) { S.sel = idx; MS.render(); } suppressClick = Date.now(); if (e.cancelable) e.preventDefault(); }
+    };
+    el.addEventListener('touchend', tend); el.addEventListener('touchcancel', tend);
+    el.addEventListener('contextmenu', e => { if (dragging || S.part === pid) e.preventDefault(); });
   }
   MS.drawStaffs = drawStaffs;
   window.addEventListener('resize', () => { if (S.screen === 'studio') drawStaffs(); });
   MS.a.staffTap = function (ev, pid) {
+    if (Date.now() - suppressClick < 450 || ev.target.closest('.ntb') || !ev.target.closest('.staffbox')) return;
     const el = ev.currentTarget, svg = el.querySelector('svg'); if (!svg) return;
-    const rect = svg.getBoundingClientRect(), map = maps[pid]; if (!map) return;
+    const rect = svg.getBoundingClientRect(), map = el._map || maps[pid]; if (!map) return;
     const x = (ev.clientX - rect.left) * (map.width / rect.width), y = (ev.clientY - rect.top) * (map.H / rect.height);
     const hit = MSS.pick(map, x, y), s = S.song, ns = MS.notesOf(s.parts.find(p => p.id === pid)), used = MS.used(ns), len = MS.sec().bars * s.ts;
     const wasActive = S.part === pid; S.part = pid;
+    if (S.ghostPick) S.ghostPick = null;
+    if (hit.ghost && !hit.onHead) { S.ghostPick = { pid, g: hit.ghost }; S.sel = null; A().preview(hit.ghost.p, s.parts.find(p => p.id === pid).inst); if (wasActive) drawStaffs(); else MS.render(); return; }
     if (hit.noteIndex != null && wasActive) {
       const n = ns[hit.noteIndex];
       if (S.sel === hit.noteIndex && n.p != null && hit.midi !== n.p) { MS.change(() => { n.p = hit.midi; }); A().preview(hit.midi, partInst()); return; }
@@ -256,7 +374,7 @@
       <div class="row" style="justify-content:space-between;margin-top:6px"><div class="label">Note length</div>${MS.helpBtn('lengths', '?')}</div><div class="row" style="gap:6px">${lens}</div>
       <div class="row" style="gap:6px"><button class="btn sm" onclick="MS.a.addRest()">Add a rest</button>${S.level !== 'Basic' ? `<label class="row tiny mod"><input type="checkbox" ${S.view.names !== false ? 'checked' : ''} onchange="MS.a.names(this.checked)"> Show note names</label>` : ''}</div>
       <div class="keys pk" aria-label="Piano keyboard"></div>
-      <div class="tiny muted">Tap a key or the staff to add a note${n ? ', or to change the selected note' : ''}.</div>
+      <div class="tiny muted">Tap a key or the staff to add a note${n ? ', or to change the selected note' : ''}. To move a note, drag it up or down${'ontouchstart' in window ? ' (press and hold it first)' : ''}.</div>
       ${n ? `<div class="card tight col" style="background:var(--panel2)"><div class="row" style="justify-content:space-between"><b>Selected: ${n.p == null ? 'rest' : MSS.name(n.p, S.song.key)} · ${(LENS.find(l => l[0] === n.d) || [0, fmtBeats(n.d) + ' beats'])[1]}</b><button class="btn sm ghost" onclick="MS.a.deselect()">Done</button></div>
         <div class="row" style="gap:6px"><button class="btn sm" onclick="MS.a.step(1)" aria-label="Higher">▲ Higher</button><button class="btn sm" onclick="MS.a.step(-1)" aria-label="Lower">▼ Lower</button><button class="btn sm adv" onclick="MS.a.step('semi+')">♯</button><button class="btn sm adv" onclick="MS.a.step('semi-')">♭</button>
         <button class="btn sm" onclick="MS.a.selMove(-1)" aria-label="Previous note">◀</button><button class="btn sm" onclick="MS.a.selMove(1)" aria-label="Next note">▶</button></div>
@@ -391,10 +509,12 @@
     if (taps.length >= 4) { const gaps = taps.slice(1).map((x, i) => x - taps[i]); const bpm = Math.round(60000 / (gaps.reduce((a, b) => a + b) / gaps.length)); taps = []; MS.change(s => { s.tempo = Math.max(40, Math.min(200, bpm)); }); MS.toast('Tempo set to ' + S.song.tempo + ' BPM'); }
     else MS.toast('Keep tapping… ' + (4 - taps.length) + ' more', 900);
   };
-  MS.a.key = function (k) {
+  MS.a.key = async function (k) {
     const old = S.song.key; if (k === old) return;
     const shift = ((A().KEYS[k] - A().KEYS[old]) + 18) % 12 - 6;
-    const move = confirm('Move all your notes and chords into ' + k + '? (Cancel keeps the notes where they are and only changes the key signature.)');
+    const ans = await MS.ask('Change the key to ' + k + '?', 'Moving your notes keeps the song sounding the same, just higher or lower. Or keep every note where it is and only change the key signature.', [['Move my notes and chords', 'move', 'primary'], ['Only change the key signature', 'sig', ''], ['Cancel', null, '']]);
+    if (!ans) { MS.render(); return; }
+    const move = ans === 'move';
     MS.change(s => {
       s.key = k;
       if (move) {
@@ -417,12 +537,16 @@
   MS.a.partSet = (id, k, v) => MS.change(s => { s.parts.find(x => x.id === id)[k] = v; }, { quiet: true });
   MS.a.dyn = (id, v) => MS.change(s => { s.parts.find(x => x.id === id).dyn[S.sec] = v; });
   function drumsCard() {
-    const d = S.song.drums;
+    const d = S.song.drums, pc = S.song.perc, any = Object.keys(pc.on).some(k => pc.on[k]);
     return `<div class="card col"><div class="row" style="justify-content:space-between"><div class="label">Drums</div>${MS.helpBtn('drums')}</div>
       <label class="f">Beat<select onchange="MS.change(x=>x.drums.style=this.value)">${Object.keys(A().DRUMS).map(k => `<option ${d.style === k ? 'selected' : ''}>${k}</option>`).join('')}</select></label>
       ${d.style !== 'None' ? `<label class="f">Drum volume<input type="range" min="0" max="1" step="0.05" value="${d.vol}" onchange="MS.change(x=>x.drums.vol=+this.value,{quiet:true})"></label>
-      <label class="row small mod"><input type="checkbox" ${d.skip[S.sec] ? 'checked' : ''} onchange="MS.change(x=>{x.drums.skip[MS.S.sec]=this.checked})"> No drums in ${esc(MS.sec().name)}</label>` : '<div class="tiny muted">Pick a beat to add drums under your song.</div>'}</div>`;
+      <label class="row small mod"><input type="checkbox" ${d.skip[S.sec] ? 'checked' : ''} onchange="MS.change(x=>{x.drums.skip[MS.S.sec]=this.checked})"> No drums in ${esc(MS.sec().name)}</label>` : '<div class="tiny muted">Pick a beat to add drums under your song.</div>'}
+      <div class="row" style="justify-content:space-between;margin-top:6px"><div class="label">Extra percussion</div>${MS.helpBtn('perc', '?')}</div>
+      <div class="seg">${Object.entries(A().PERC).map(([k, v]) => `<button type="button" class="pill ${pc.on[k] ? 'on' : ''}" aria-pressed="${!!pc.on[k]}" onclick="MS.a.perc('${k}')">${esc(v.name)}</button>`).join('')}</div>
+      ${any ? `<label class="f">Percussion volume<input type="range" min="0" max="1" step="0.05" value="${pc.vol}" onchange="MS.change(x=>x.perc.vol=+this.value,{quiet:true})"></label><div class="tiny muted">They play all the way through. Pick sections on the build grid in the 🎚 Control Room.</div>` : '<div class="tiny muted">Tap one to hear it and add it. Works with or without a drum beat.</div>'}</div>`;
   }
+  MS.a.perc = function (k) { const was = !!S.song.perc.on[k]; MS.change(s => { s.perc.on[k] = !was; }); if (!was) A().hearPerc(k); if (MS._pick && document.querySelector('.modal')) renderPicker(); };
   function mixer() {
     const s = S.song;
     const strip = (name, color, obj, path) => `<div class="strip" style="border-top:3px solid ${color}"><b style="color:var(--ink)">${esc(name)}</b>
@@ -438,17 +562,45 @@
   };
 
   // ---------- instrument picker ----------
+  // a short list that fits the song's style first; everything else is one tap away
+  const FOCUS = {
+    '': ['Grand piano', 'Acoustic guitar', 'Electric guitar', 'Violins', 'Cellos', 'Flute', 'Trumpet', 'Synth', 'Choir', 'Bass guitar'],
+    'Pop': ['Grand piano', 'Electric piano', 'Synth', 'Acoustic guitar', 'Electric guitar', 'Violins', 'Choir', 'Bass guitar'],
+    'R&B': ['Electric piano', 'Grand piano', 'Organ', 'Synth', 'Choir', 'Violins', 'Trumpet', 'Bass guitar'],
+    'Rock': ['Electric guitar', 'Organ', 'Grand piano', 'Synth', 'Acoustic guitar', 'Bass guitar'],
+    'Jazz swing': ['Grand piano', 'Trumpet', 'Trombone', 'Clarinet', 'Electric piano', 'Organ', 'Acoustic guitar', 'Double bass'],
+    'Classical': ['Violins', 'Violas', 'Cellos', 'Harp', 'Flute', 'Oboe', 'Clarinet', 'French horn', 'Grand piano', 'Double bass'],
+    'Full orchestra': ['Violins', 'Violas', 'Cellos', 'French horn', 'Trumpet', 'Trombone', 'Flute', 'Oboe', 'Harp', 'Timpani', 'Choir', 'Tuba'],
+    'Country': ['Acoustic guitar', 'Fiddle', 'Banjo', 'Harmonica', 'Grand piano', 'Electric guitar', 'Bass guitar'],
+    'Hip-hop': ['Synth', 'Electric piano', 'Grand piano', 'Organ', 'Choir', 'Bass guitar'],
+    'Soft ballad': ['Grand piano', 'Violins', 'Cellos', 'Acoustic guitar', 'Flute', 'Harp', 'Choir'],
+    'March': ['Trumpet', 'French horn', 'Trombone', 'Flute', 'Clarinet', 'Glockenspiel', 'Tuba', 'Timpani'],
+    'World': ['Spanish guitar', 'Marimba', 'Sitar', 'Bansuri', 'Steel drums', 'Koto', 'Kalimba', 'Accordion']
+  };
+  const BASSY = ['Bass guitar', 'Double bass', 'Cellos', 'Tuba', 'Bassoon', 'Synth', 'Grand piano', 'Timpani'];
+  function focusList(k) {
+    const style = (S.song.style || '').split(' · ')[0], tp = S.song.parts.find(p => p.id === k.pid);
+    let list = tp && tp.role === 'bass' ? BASSY : (FOCUS[style] || FOCUS['']);
+    if (!list.includes(k.inst)) list = [k.inst].concat(list);
+    return { list, label: tp && tp.role === 'bass' ? 'Good for a bass part' : style ? 'Suggested for ' + style : 'Suggested sounds' };
+  }
   MS.a.pickInst = function (pid) {
     const target = pid === 'chords' ? S.song.chordPart : pid.startsWith('L:') ? S.song.layers.find(L => 'L:' + L.id === pid) : S.song.parts.find(p => p.id === pid);
-    MS._pick = { pid, inst: target.inst, ens: target.ens || 'solo', size: target.size || 'Chamber (12)', artic: target.artic || 'legato' };
+    MS._pick = { pid, inst: target.inst, ens: target.ens || 'solo', size: target.size || 'Chamber (12)', artic: target.artic || 'legato', view: (A().INST[target.inst] || {}).family === 'World' ? 'world' : 'focus' };
     renderPicker();
   };
+  MS.a._piView = v => { MS._pick.view = v; renderPicker(); };
+  const instBtn = (n, k) => `<button class="btn sm" style="${n === k.inst ? 'border-color:var(--amber);background:#2a2210' : ''}" onclick="MS.a._pi('inst',${esc(JSON.stringify(n))})">${esc(n)}</button>`;
   function renderPicker() {
-    const k = MS._pick, I = A().INST[k.inst] || {};
-    const fam = A().FAMILIES.map(f => `<div class="card tight col"><b>${f}</b><div class="row" style="gap:6px">${Object.entries(A().INST).filter(([, v]) => v.family === f).map(([n]) => `<button class="btn sm" style="${n === k.inst ? 'border-color:var(--amber);background:#2a2210' : ''}" onclick="MS.a._pi('inst',${esc(JSON.stringify(n))})">${n}</button>`).join('')}</div></div>`).join('');
+    const k = MS._pick, I = A().INST[k.inst] || {}, f0 = focusList(k), pc = S.song.perc.on;
+    const tabs = `<div class="seg" role="tablist" style="margin-top:10px">${[['focus', f0.label], ['all', 'More sounds'], ['world', '🌍 World sounds']].map(([v, t]) => `<button type="button" class="pill ${k.view === v ? 'on' : ''}" aria-pressed="${k.view === v}" onclick="MS.a._piView('${v}')">${esc(t)}</button>`).join('')}</div>`;
+    const fam = k.view === 'focus' ? `<div class="card tight col"><b>${esc(f0.label)}</b><div class="row" style="gap:6px">${f0.list.map(n => instBtn(n, k)).join('')}</div><div class="tiny muted">Looking for something else? Tap More sounds or 🌍 World sounds.</div></div>`
+      : k.view === 'world' ? A().REGIONS.map(r => { const ins = Object.entries(A().INST).filter(([, v]) => v.region === r).map(([n]) => n), pr = A().REGION_PERC[r] || [];
+          return `<div class="card tight col"><b>${esc(r)}</b><div class="row" style="gap:6px">${ins.map(n => instBtn(n, k)).join('')}</div>${pr.length ? `<div class="row tiny muted" style="gap:6px">Drums from here: ${pr.map(x => `<button class="btn sm ghost" aria-pressed="${!!pc[x]}" onclick="MS.a.perc('${x}')">${pc[x] ? '✓ ' : '+ '}${esc(A().PERC[x].name)}</button>`).join('')}</div>` : ''}</div>`; }).join('') + '<div class="tiny muted">World sounds are built-in approximations, not recordings of the real instruments.</div>'
+      : A().FAMILIES.map(f => `<div class="card tight col"><b>${f}</b><div class="row" style="gap:6px">${Object.entries(A().INST).filter(([, v]) => v.family === f).map(([n]) => instBtn(n, k)).join('')}</div></div>`).join('');
     const target = k.pid === 'chords' ? 'Chords' : k.pid.startsWith('L:') ? (S.song.layers.find(L => 'L:' + L.id === k.pid) || {}).name : (S.song.parts.find(p => p.id === k.pid) || {}).name;
     MS.modal(`<div class="row" style="justify-content:space-between"><h2>Pick an instrument for ${esc(target)}</h2><div class="row">${MS.helpBtn('instruments')}<button class="btn sm ghost" onclick="MS.closeModal()">Close</button></div></div>
-      <div class="split" style="margin-top:12px"><div class="main"><div class="grid">${fam}</div></div>
+      ${tabs}<div class="split" style="margin-top:12px"><div class="main"><div class="grid">${fam}</div></div>
       <div class="side"><div class="card col"><div class="label">${esc(k.inst)}</div>
       ${I.ens ? `<div class="grid" style="grid-template-columns:1fr 1fr;gap:8px">
         <button class="opt lesson-card ${k.ens === 'section' ? 'on' : ''}" onclick="MS.a._pi('ens','section')"><b>Section</b><span class="tiny" style="color:#ddd8cc">Many playing together. Rich and full.</span></button>
@@ -462,11 +614,11 @@
   }
   MS.a._pi = function (k, v) { MS._pick[k] = v; if (k === 'inst') { const I = A().INST[v]; MS._pick.ens = I.ens ? (/Violins|Violas|Cellos|Choir/.test(v) ? 'section' : 'solo') : 'solo'; } renderPicker(); if (k !== 'size') MS.a._hearInst(); };
   MS.a._hearInst = function () {
-    const k = MS._pick, bass = /Double bass|Cellos|Tuba|Bass guitar|Bassoon|Trombone|Timpani/.test(k.inst), b = bass ? 43 : 60;
+    const k = MS._pick, bass = /Double bass|Cellos|Tuba|Bass guitar|Bassoon|Trombone|Timpani/.test(k.inst), b = bass ? 43 : /Tanpura/.test(k.inst) ? 48 : 60;
     A().previewSequence([{ p: b, d: 1 }, { p: b + 4, d: 1 }, { p: b + 7, d: 1 }, { p: b + 12, d: 2 }], k.inst, 100, { solo: k.ens !== 'section', voices: A().SIZES[k.size] || 5, artic: k.artic });
   };
   MS.a._useInst = function () {
-    const k = MS._pick; MS.closeModal();
+    const k = MS._pick; MS._pick = null; MS.closeModal();
     MS.change(s => { const t = k.pid === 'chords' ? s.chordPart : k.pid.startsWith('L:') ? s.layers.find(L => 'L:' + L.id === k.pid) : s.parts.find(p => p.id === k.pid); Object.assign(t, { inst: k.inst, ens: k.ens, size: k.size, artic: k.artic }); });
   };
 })();

@@ -37,9 +37,31 @@
     'Electric guitar': { family: 'Band', kind: 'eguitar' },
     'Bass guitar': { family: 'Band', kind: 'bass' },
     'Synth': { family: 'Band', kind: 'synth' },
-    'Choir': { family: 'Voices', kind: 'choir', ens: true, vowel: 'aah' }
+    'Choir': { family: 'Voices', kind: 'choir', ens: true, vowel: 'aah' },
+    // World sounds (built-in approximations)
+    'Spanish guitar': { family: 'World', region: 'Spanish & Latin', kind: 'guitar', damp: 0.993, bright: 0.38 },
+    'Marimba': { family: 'World', region: 'Spanish & Latin', kind: 'mallet', partials: [[1, 1], [4, 0.22], [9.9, 0.05]], decay: 0.32, peak: 0.34 },
+    'Sitar': { family: 'World', region: 'Indian', kind: 'sitar' },
+    'Tanpura': { family: 'World', region: 'Indian', kind: 'sitar', drone: true },
+    'Bansuri': { family: 'World', region: 'Indian', kind: 'flute', breath: 0.32, vib: 9 },
+    'Oud': { family: 'World', region: 'Middle Eastern', kind: 'guitar', damp: 0.99, bright: 0.3 },
+    'Koto': { family: 'World', region: 'East Asian', kind: 'harp', damp: 0.994, bright: 0.78 },
+    'Guzheng': { family: 'World', region: 'East Asian', kind: 'harp', damp: 0.996, bright: 0.65, bend: true },
+    'Erhu': { family: 'World', region: 'East Asian', kind: 'strings', bright: 0.95, vib: 24 },
+    'Shakuhachi': { family: 'World', region: 'East Asian', kind: 'flute', breath: 0.5, vib: 14 },
+    'Kalimba': { family: 'World', region: 'African', kind: 'mallet', partials: [[1, 1], [5.8, 0.14]], decay: 0.5, peak: 0.3 },
+    'Steel drums': { family: 'World', region: 'Caribbean', kind: 'mallet', partials: [[1, 1], [2, 0.45], [3, 0.18], [4.1, 0.08]], decay: 0.55, peak: 0.22, attack: 0.012 },
+    'Bagpipes': { family: 'World', region: 'Celtic', kind: 'oboe', pipes: true },
+    'Tin whistle': { family: 'World', region: 'Celtic', kind: 'flute', breath: 0.22, vib: 8 },
+    'Fiddle': { family: 'World', region: 'Celtic', kind: 'strings', bright: 1 },
+    'Banjo': { family: 'World', region: 'American roots', kind: 'guitar', damp: 0.982, bright: 0.92 },
+    'Harmonica': { family: 'World', region: 'American roots', kind: 'reed', detune: 4, cut: 1900, vib: 10 },
+    'Accordion': { family: 'World', region: 'American roots', kind: 'reed', detune: 14, cut: 2600 }
   };
   A.FAMILIES = ['Strings', 'Woodwinds', 'Brass', 'Keys', 'Percussion', 'Band', 'Voices'];
+  A.REGIONS = ['Spanish & Latin', 'Indian', 'Middle Eastern', 'East Asian', 'African', 'Caribbean', 'Celtic', 'American roots'];
+  // drum-type world instruments live on the Drums card as percussion switches
+  A.REGION_PERC = { 'Spanish & Latin': ['congas', 'bongos', 'shaker'], 'Indian': ['tabla'], 'Middle Eastern': ['darbuka'], 'African': ['djembe'], 'Caribbean': ['bongos'], 'Celtic': [], 'East Asian': [], 'American roots': ['tambourine'] };
   A.SIZES = { 'Small (4)': 3, 'Chamber (12)': 5, 'Full orchestra (30)': 8 };
 
   const freq = m => 440 * Math.pow(2, (m - 69) / 12);
@@ -126,7 +148,8 @@
         const harp = I.kind === 'harp', hs = I.kind === 'harpsi', eg = I.kind === 'eguitar';
         const secs = Math.min(4, dur + (harp ? 1.6 : hs ? 0.4 : 1.0));
         const s = ctx.createBufferSource();
-        s.buffer = pluckBuf(ctx, f, Math.round(secs * 4) / 4, hs ? 0.985 : harp ? 0.997 : 0.994, hs ? 0.95 : harp ? 0.55 : 0.5);
+        s.buffer = pluckBuf(ctx, f, Math.round(secs * 4) / 4, I.damp || (hs ? 0.985 : harp ? 0.997 : 0.994), I.bright || (hs ? 0.95 : harp ? 0.55 : 0.5));
+        if (I.bend) { s.playbackRate.setValueAtTime(0.965, t); s.playbackRate.linearRampToValueAtTime(1, t + 0.09); }
         let node = s;
         if (eg) { const ws = ctx.createWaveShaper(); const c = new Float32Array(256); for (let i = 0; i < 256; i++) { const x = i / 128 - 1; c[i] = Math.tanh(2.5 * x); } ws.curve = c; s.connect(ws); node = ws; }
         node.connect(g); g.gain.setValueAtTime((eg ? 0.25 : 0.5) * vel, t);
@@ -147,6 +170,32 @@
         g.gain.setValueAtTime(0.0001, t); g.gain.linearRampToValueAtTime((I.soft ? 0.14 : 0.2) * vel, t + 0.003);
         g.gain.setTargetAtTime(0.0001, t + 0.01, I.soft ? 0.5 : 0.7);
         osc(ctx, 'sine', f * 2, t, end, g); const p2 = ctx.createGain(); p2.gain.value = 0.3; p2.connect(g); osc(ctx, 'sine', f * 5.4, t, end, p2);
+        break;
+      }
+      case 'mallet': { // marimba, kalimba, steel drums
+        end = t + Math.min(dur + 1.2, 3);
+        g.gain.setValueAtTime(0.0001, t); g.gain.linearRampToValueAtTime((I.peak || 0.3) * vel, t + (I.attack || 0.003));
+        g.gain.setTargetAtTime(0.0001, t + 0.02, I.decay || 0.4);
+        (I.partials || [[1, 1]]).forEach(([m, a], i) => { const pg = ctx.createGain(); pg.gain.setValueAtTime(a, t); if (i) pg.gain.setTargetAtTime(0, t, 0.06 * (I.decay || 0.4) * 3); pg.connect(g); osc(ctx, 'sine', f * m, t, end, pg); });
+        break;
+      }
+      case 'sitar': { // plucked string with a buzzy bridge (tanpura rings longer, softer)
+        const dr = !!I.drone, secs = Math.min(dr ? 4 : 3.5, dur + (dr ? 2.2 : 1.4));
+        const s = ctx.createBufferSource(); s.buffer = pluckBuf(ctx, f, Math.round(secs * 4) / 4, 0.997, dr ? 0.6 : 0.88);
+        s.playbackRate.setValueAtTime(dr ? 1 : 0.99, t); s.playbackRate.linearRampToValueAtTime(1, t + 0.06);
+        const ws = ctx.createWaveShaper(), c = new Float32Array(256); for (let i = 0; i < 256; i++) { const x = i / 128 - 1; c[i] = x + 0.35 * Math.sin(3 * x) * Math.abs(x); } ws.curve = c;
+        const pk = ctx.createBiquadFilter(); pk.type = 'peaking'; pk.Q.value = 3; pk.gain.value = 9; pk.frequency.setValueAtTime(1200, t); pk.frequency.exponentialRampToValueAtTime(3800, t + 0.5);
+        s.connect(ws); ws.connect(pk); pk.connect(g);
+        const sym = ctx.createBufferSource(); sym.buffer = pluckBuf(ctx, f * 2, Math.round(secs * 4) / 4, 0.998, 0.4); const sg = ctx.createGain(); sg.gain.value = 0.18; sym.connect(sg); sg.connect(g);
+        g.gain.setValueAtTime((dr ? 0.3 : 0.42) * vel, t); g.gain.setTargetAtTime(0.0001, t + dur + (dr ? 1.2 : 0.4), 0.15);
+        end = t + secs; s.start(t); s.stop(end); sym.start(t + 0.01); sym.stop(end);
+        break;
+      }
+      case 'reed': { // accordion, harmonica
+        end = env(g, t, dur, 0.035, 0.1, 0.9, 0.1, 0.11 * vel);
+        const lp = ctx.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = I.cut || 2200; lp.connect(g);
+        [-1, 1].forEach(sg => { const ov = osc(ctx, 'square', f, t, end, lp, sg * (I.detune || 5)); if (I.vib) vibrato(ctx, ov, t, end, 5.5, I.vib, 0.15); });
+        const o2 = ctx.createGain(); o2.gain.value = 0.35; o2.connect(lp); osc(ctx, 'sawtooth', f * 2, t, end, o2);
         break;
       }
       case 'timpani': {
@@ -172,7 +221,8 @@
         if (artic === 'tremolo') { const l = ctx.createOscillator(), lg = ctx.createGain(); l.frequency.value = 13; lg.gain.value = peak * 0.6; l.connect(lg); lg.connect(g.gain); l.start(t); l.stop(end); }
         const bright = I.bright == null ? 0.8 : I.bright;
         let filt = ctx.createBiquadFilter(); filt.type = 'lowpass';
-        filt.frequency.value = kind === 'strings' ? 1200 + 2600 * bright : kind === 'brass' ? 700 + 2400 * bright : kind === 'clarinet' ? (I.dark ? 900 : 1700) : kind === 'oboe' ? 2600 : 3200;
+        filt.frequency.value = kind === 'strings' ? 1200 + 2600 * bright : kind === 'brass' ? 700 + 2400 * bright : kind === 'clarinet' ? (I.dark ? 900 : 1700) : kind === 'oboe' ? (I.pipes ? 3600 : 2600) : 3200;
+        if (I.pipes) { const dg = ctx.createGain(); dg.gain.value = 0.45; dg.connect(filt); osc(ctx, 'sawtooth', f / 2, t, end, dg); }
         filt.Q.value = kind === 'brass' ? 2 : 0.7;
         if (kind === 'brass') { filt.frequency.setValueAtTime(400, t); filt.frequency.linearRampToValueAtTime(700 + 2400 * bright, t + 0.08); }
         filt.connect(g);
@@ -186,10 +236,10 @@
         for (let i = 0; i < n; i++) {
           const st = t + (n > 1 ? rnd(0, 0.025) : 0);
           const ov = osc(ctx, wave, f, st, end, into, n > 1 ? rnd(-9, 9) : 0);
-          if (kind !== 'synth' && kind !== 'brass') vibrato(ctx, ov, st, end, rnd(5, 6), kind === 'flute' ? 6 : n > 1 ? 7 : 12, 0.2);
+          if (kind !== 'synth' && kind !== 'brass' && !I.pipes) vibrato(ctx, ov, st, end, rnd(5, 6), I.vib || (kind === 'flute' ? 6 : n > 1 ? 7 : 12), 0.2);
           if (kind === 'synth') osc(ctx, 'sawtooth', f, st, end, into, 12);
         }
-        if (kind === 'flute') { const s = ctx.createBufferSource(); s.buffer = noise(ctx); const bp = ctx.createBiquadFilter(); bp.type = 'bandpass'; bp.frequency.value = f * 2; bp.Q.value = 3; const ng = ctx.createGain(); ng.gain.value = 0.15; s.connect(bp); bp.connect(ng); ng.connect(g); s.start(t); s.stop(end); }
+        if (kind === 'flute') { const s = ctx.createBufferSource(); s.buffer = noise(ctx); const bp = ctx.createBiquadFilter(); bp.type = 'bandpass'; bp.frequency.value = f * 2; bp.Q.value = 3; const ng = ctx.createGain(); ng.gain.value = I.breath || 0.15; s.connect(bp); bp.connect(ng); ng.connect(g); s.start(t); s.stop(end); }
       }
     }
     return end;
@@ -222,8 +272,47 @@
     'Jazz swing': { k: 'x.......x.......', r: 'x...x.xx..x.x.xx', s: '....x.......x...', swing: true, soft: true },
     'Country': { k: 'x.......x.......', s: '....x.......x...', h: 'x.xxx.xxx.xxx.xx' },
     'Waltz': { k: 'x...........', s: '....x...x...', h: 'x...x...x...' },
-    'March': { k: 'x.......x.......', s: 'x.xxx.x.x.xxx.x.' }
+    'March': { k: 'x.......x.......', s: 'x.xxx.x.x.xxx.x.' },
+    'Latin': { k: 'x..x..x.x..x..x.', r: 'x.x.x.x.x.x.x.x.', c: '...x..x....x..x.', soft: true },
+    'Reggae': { k: '........x.......', s: '........x.......', h: '..x...x...x...x.' }
   };
+  // extra percussion: switches on the Drums card. Patterns are 16 steps (first 12 used in 3/4). x = hit, h = high, l = low
+  A.PERC = {
+    tambourine: { name: 'Tambourine', pat: '..x...x...x...x.' },
+    shaker: { name: 'Shaker', pat: 'xxxxxxxxxxxxxxxx' },
+    cowbell: { name: 'Cowbell', pat: 'x...x...x...x...' },
+    claps: { name: 'Hand claps', pat: '....x.......x...' },
+    congas: { name: 'Congas', pat: 'l..h..h.l..h.hh.', world: 'Latin' },
+    bongos: { name: 'Bongos', pat: 'hlhhhlhhhlhhhlhh', world: 'Latin, Caribbean' },
+    tabla: { name: 'Tabla', pat: 'l.h.hlh.l.h.hlh.', world: 'Indian' },
+    djembe: { name: 'Djembe', pat: 'l..hh.h.l..hh.h.', world: 'African' },
+    darbuka: { name: 'Darbuka', pat: 'l..h.hl.l..h.hl.', world: 'Middle Eastern' }
+  };
+  function tone(ctx, dest, t, f0, f1, dec, peak, type) {
+    const o = ctx.createOscillator(), g = ctx.createGain(); o.type = type || 'sine';
+    o.frequency.setValueAtTime(f0, t); o.frequency.exponentialRampToValueAtTime(f1, t + Math.min(0.12, dec));
+    g.gain.setValueAtTime(peak, t); g.gain.exponentialRampToValueAtTime(0.001, t + dec); o.connect(g); g.connect(dest); o.start(t); o.stop(t + dec + 0.02);
+  }
+  function burst(ctx, dest, t, type, fr, q, dec, peak) {
+    const s = ctx.createBufferSource(); s.buffer = noise(ctx); const f = ctx.createBiquadFilter(); f.type = type; f.frequency.value = fr; f.Q.value = q || 1;
+    const g = ctx.createGain(); g.gain.setValueAtTime(peak, t); g.gain.exponentialRampToValueAtTime(0.001, t + dec);
+    s.connect(f); f.connect(g); g.connect(dest); s.start(t, Math.random() * 1.5); s.stop(t + dec + 0.02);
+  }
+  function perc(ctx, dest, t, name, hi, vel) {
+    const v = vel;
+    switch (name) {
+      case 'tambourine': burst(ctx, dest, t, 'highpass', 6500, 1, 0.16, 0.3 * v); burst(ctx, dest, t, 'bandpass', 9000, 4, 0.12, 0.25 * v); break;
+      case 'shaker': burst(ctx, dest, t, 'bandpass', 5200, 1.4, 0.06, 0.14 * v); break;
+      case 'cowbell': { const bp = ctx.createBiquadFilter(); bp.type = 'bandpass'; bp.frequency.value = 900; bp.Q.value = 2; bp.connect(dest); tone(ctx, bp, t, 545, 540, 0.3, 0.35 * v, 'square'); tone(ctx, bp, t, 815, 810, 0.3, 0.25 * v, 'square'); break; }
+      case 'claps': [0, 0.012, 0.024].forEach((d, i) => burst(ctx, dest, t + d, 'bandpass', 1200, 1.5, i === 2 ? 0.14 : 0.03, 0.45 * v)); break;
+      case 'congas': tone(ctx, dest, t, hi ? 360 : 230, hi ? 320 : 195, 0.28, 0.55 * v); burst(ctx, dest, t, 'bandpass', 2000, 1, 0.02, 0.15 * v); break;
+      case 'bongos': tone(ctx, dest, t, hi ? 560 : 420, hi ? 520 : 390, 0.13, 0.42 * v); break;
+      case 'tabla': if (hi) { tone(ctx, dest, t, 620, 610, 0.32, 0.32 * v); tone(ctx, dest, t, 1240, 1230, 0.18, 0.12 * v); } else tone(ctx, dest, t, 95, 140, 0.42, 0.6 * v); break;
+      case 'djembe': if (hi) { burst(ctx, dest, t, 'bandpass', 1800, 1.2, 0.07, 0.4 * v); tone(ctx, dest, t, 520, 480, 0.08, 0.25 * v); } else tone(ctx, dest, t, 110, 72, 0.32, 0.75 * v); break;
+      case 'darbuka': if (hi) burst(ctx, dest, t, 'bandpass', 3200, 2, 0.05, 0.42 * v); else tone(ctx, dest, t, 150, 98, 0.3, 0.65 * v); break;
+    }
+  }
+  A.hearPerc = function (name) { const c = A.ctx(), pat = A.PERC[name].pat, spb = 60 / 100, t0 = c.currentTime + 0.05; for (let i = 0; i < 16; i++) { const ch = pat[i]; if (ch !== '.') perc(c, c.destination, t0 + i * spb / 4, name, ch === 'h', ch === 'x' && name === 'shaker' ? (i % 4 ? 0.6 : 1) : 0.9); } };
 
   // ---------- music helpers ----------
   const SCALE = [0, 2, 4, 5, 7, 9, 11];
@@ -401,6 +490,30 @@
           });
           if (bar === s.sec.bars - 1 && s.sec.bars > 1 && song.drums.fills !== false) drum(ctx, dg, T(barStart + song.ts - 0.5), 's', 0.7);
         }
+      });
+    }
+    // extra percussion (tambourine, shaker, congas, tabla ...): plays with or without a drum beat
+    const pc = song.perc, pcOn = pc && Object.keys(pc.on || {}).filter(k => pc.on[k] && A.PERC[k]);
+    if (pcOn && pcOn.length && !anySolo) {
+      const pg = ctx.createGain(); pg.gain.value = (pc.vol == null ? 0.55 : pc.vol) * (pc.mute ? 0 : 1); pg.connect(master);
+      if (opts.meters) { const an = ctx.createAnalyser(); an.fftSize = 512; pg.connect(an); meters.perc = an; }
+      const pr = ctx.createGain(); pr.gain.value = 0.18; pg.connect(pr); pr.connect(conv);
+      const steps = song.ts === 3 ? 12 : 16, sw = ds && ds.swing;
+      tl.secs.forEach(s => {
+        if (!keep(s)) return; const sb = startBeatOf(s);
+        pcOn.forEach(k => {
+          if ((pc.off[k] || {})[s.sec.id]) return;
+          const pat = A.PERC[k].pat;
+          for (let bar = 0; bar < s.sec.bars; bar++) {
+            const barStart = sb + bar * song.ts; if (barStart < 0) continue;
+            for (let i = 0; i < steps; i++) {
+              const c = pat[i]; if (c === '.') continue;
+              let beat = i / 4; if (sw && i % 2 === 1) beat += 0.25 * swingAmt;
+              const tt = T(barStart + beat); perc(ctx, pg, tt, k, c === 'h', (k === 'shaker' ? (i % 4 ? 0.55 : 1) : i % 4 === 0 ? 1 : 0.8));
+              if (tt + 0.45 > lastEnd) lastEnd = tt + 0.45;
+            }
+          }
+        });
       });
     }
     // background singers (synthesized choir following the melody)

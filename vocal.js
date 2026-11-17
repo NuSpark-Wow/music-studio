@@ -128,7 +128,7 @@
     MS.change(x => { x.vocals.leadMute = false; Object.assign(x.vocals.lead, Object.fromEntries(x.sections.map(z => [z.id, x.vocals.lead[z.id] || 'voice']))); });
     MS.toast('Got it. Press ▶ to hear it with the music.');
   }
-  MS.a.delVocal = function () { if (!confirm('Delete your recorded vocal?')) return; MS.vbuf = null; saveVocal(); MS.render(); };
+  MS.a.delVocal = async function () { if (!(await MS.ask('Delete your recorded vocal?', 'Your voice recording for this song will be erased from this device.', [['Delete recording', true, 'danger'], ['Keep it', null, '']]))) return; MS.vbuf = null; saveVocal(); MS.render(); };
 
   // keep the recording on this device between visits (IndexedDB)
   function idb() { return new Promise((res, rej) => { const r = indexedDB.open('musicstudio', 1); r.onupgradeneeded = () => r.result.createObjectStore('v'); r.onsuccess = () => res(r.result); r.onerror = rej; }); }

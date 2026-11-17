@@ -118,6 +118,23 @@
       const p0 = ly.pts[i], x0p = ly.xs[i], p1 = i < ly.pts.length - 1 ? ly.pts[i + 1] : ts, x1p = i < ly.pts.length - 1 ? ly.xs[i + 1] : ly.end;
       return Math.max(0, Math.min(ts, p0 + (x1p > x0p ? (x - x0p) / (x1p - x0p) : 0) * (p1 - p0))); };
     map.barX = barX;
+    // ghost notes: the melody drawn faintly behind a harmony or bass part (not tappable as your notes)
+    const ghosts = [];
+    if (o.ghost && o.ghost.length) {
+      const gc = o.ghostColor || (o.paper === 'dark' ? 'rgba(232,227,216,.28)' : 'rgba(20,20,20,.22)');
+      let gb = 0;
+      o.ghost.forEach((n, gi) => {
+        if (n.p != null && gb < bars * ts - 1e-6) {
+          const bar = Math.floor(gb / ts + 1e-9), inBar = gb - bar * ts, d0 = Math.min(n.d, ts - inBar), d = pieces(d0, inBar)[0];
+          const pt = barX(bar, inBar);
+          if (pt) { const sp = spell(n.p, key), y = pt.y0 + 4 * S - (sp.step - bottom) * S / 2;
+            out.push(`<g opacity="1">${noteSvg(d, pt.x, y, pt.y0, sp.step, mid, bottom, gc, gc)}</g>`);
+            ghosts.push({ gi, x: pt.x, y, L: pt.L, p: n.p, beat: gb, d: n.d }); }
+        }
+        gb += n.d;
+      });
+    }
+    map.ghosts = ghosts;
     const notes = o.notes || []; let beat = 0; const heads = [];
     const accState = {}; let accBar = -1;
     notes.forEach((n, idx) => {
@@ -169,9 +186,11 @@
   const baseOf = d => [4, 2, 1, 0.5, 0.25].find(b => b <= d + 1e-6) || 0.25;
   // a single note (or rest) as a small icon for buttons
   M.icon = function (d, color, rest) {
-    const c = color || 'currentColor', y0 = 14, x = 14;
-    const inner = rest ? (function () { return restSvg(d, x, y0, c); })() : noteSvg(d, x, 52, 12, 30, 34, 30, c, 'transparent');
-    return `<svg width="26" height="44" viewBox="0 0 28 68" aria-hidden="true" style="vertical-align:middle">${inner}</svg>`;
+    const c = color || 'currentColor', base = baseOf(d), dotted = Math.abs(d - base * 1.5) < 1e-6;
+    // every icon sits on the same baseline and is centered left-to-right, so a row of buttons lines up
+    const x = 12 - (base <= 0.5 ? 3 : 0) - (dotted ? 3 : 0), y = base === 4 ? 36 : 50;
+    const inner = rest ? restSvg(d, 14, 14, c) : noteSvg(d, x, y, 12, 30, 34, 30, c, 'transparent');
+    return `<svg width="18" height="34" viewBox="0 6 28 54" aria-hidden="true" style="vertical-align:middle;flex:0 0 auto;display:inline-block">${inner}</svg>`;
   };
   function noteSvg(d, x, y, y0, step, mid, bottom, c, lc) {
     let s = '';
@@ -211,8 +230,13 @@
     const step = Math.round((lm.y0 + 4 * S - y) / (S / 2)) + bottom;
     let m = lm.measures.find(mm => x >= mm.x && x < mm.x + mm.w) || (x < lm.measures[0].x ? lm.measures[0] : lm.measures[lm.measures.length - 1]);
     const beat = m.bar * map.ts + Math.round(map.beatAtX(m.bar, x) * 2) / 2;
-    return { beat, step, midi: M.stepToMidi(Math.max(bottom - 8, Math.min(bottom + 16, step)), map.key), noteIndex: near ? near.idx : null };
+    let ghost = null, gb = 14;
+    (map.ghosts || []).forEach(g => { if (g.L !== L) return; const dd = Math.abs(g.x - x) + Math.abs(g.y - y) * 0.6; if (Math.abs(g.x - x) < 12 && Math.abs(g.y - y) < 12 && dd < gb) { gb = dd; ghost = g; } });
+    const ownNear = near && Math.abs(near.y - y) < 14;
+    return { beat, step, midi: M.stepToMidi(Math.max(bottom - 8, Math.min(bottom + 16, step)), map.key), noteIndex: near ? near.idx : null, onHead: !!ownNear, ghost: ownNear ? null : ghost };
   };
 
+  M.stepAtY = function (map, L, y) { const lm = map.lines[L] || map.lines[0], bottom = BOTTOM[map.clef]; return Math.max(bottom - 8, Math.min(bottom + 16, Math.round((lm.y0 + 4 * S - y) / (S / 2)) + bottom)); };
+  M.lineAtY = function (map, y) { let L = map.lines.findIndex(l => y >= l.top && y < l.bottom); if (L < 0) L = y < map.lines[0].top ? 0 : map.lines.length - 1; return L; };
   window.MSS = M;
 })();

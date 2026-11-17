@@ -5,6 +5,7 @@
   var me = document.currentScript, root = document.querySelector(me.getAttribute('data-root') || 'body');
   var docks = (me.getAttribute('data-docks') || '').split(',').filter(Boolean);
   var covers = (me.getAttribute('data-covers') || '').split(',').filter(Boolean);
+  var pins = (me.getAttribute('data-pins') || '').split(',').filter(Boolean); // keep these pinned at the top of what the visitor sees, inside their box
   var on = false, vt = 0, vh = window.innerHeight, last = 0, raf = 0;
   function contentHeight() {
     var r = root.getBoundingClientRect(), cs = getComputedStyle(root);
@@ -13,6 +14,7 @@
   function place() {
     if (!on) return;
     docks.forEach(function (s) { document.querySelectorAll(s).forEach(function (el) { el.style.position = 'absolute'; el.style.bottom = 'auto'; el.style.top = Math.max(0, vt + vh - el.offsetHeight) + 'px'; }); });
+    pins.forEach(function (s) { document.querySelectorAll(s).forEach(function (el) { var box = el.parentElement; if (!box) return; el.style.top = '0px'; var bt = box.getBoundingClientRect().top + window.scrollY, room = box.offsetHeight - el.offsetHeight; el.style.top = Math.max(0, Math.min(room, vt - bt)) + 'px'; }); });
     covers.forEach(function (s) { document.querySelectorAll(s).forEach(function (el) { el.style.position = 'absolute'; el.style.bottom = 'auto'; el.style.left = '0'; el.style.right = '0'; el.style.top = vt + 'px'; el.style.height = vh + 'px'; }); });
   }
   function update() {

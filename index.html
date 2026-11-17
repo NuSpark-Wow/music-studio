@@ -55,7 +55,19 @@ input[type=checkbox]{width:20px;height:20px;accent-color:var(--amber);flex:0 0 a
 .part{display:flex;flex-direction:column;gap:8px}
 .part.active{border-color:var(--amber);box-shadow:0 0 0 1px var(--amber)}
 .dot{width:12px;height:12px;border-radius:50%;display:inline-block;flex:0 0 auto}
-.staffbox{cursor:crosshair;border-radius:8px}
+.staffbox{cursor:crosshair;border-radius:8px;position:relative;-webkit-user-select:none;user-select:none;-webkit-touch-callout:none}
+.staffbox .sv{position:relative}.staffbox .hit{position:absolute;inset:0;z-index:2}.staffbox .tbw{position:absolute;inset:0;z-index:6;pointer-events:none}.staffbox .tbw .ntb{pointer-events:auto}
+.pinstaff .staffbox{max-height:34vh;overflow-y:auto;overscroll-behavior:contain}
+.ntb.inbar{position:static;transform:none;margin-top:6px;max-width:100%;flex-direction:row}
+.pinbar:empty{display:none}
+.staffbox.dragging{cursor:grabbing;outline:2px solid var(--amber);outline-offset:2px}
+.ntb{position:absolute;z-index:6;transform:translateY(-100%);display:flex;gap:4px;flex-wrap:nowrap;align-items:center;padding:5px;background:rgba(19,20,24,.97);border:1px solid var(--amber);border-radius:12px;box-shadow:0 6px 18px rgba(0,0,0,.45);max-width:calc(100% - 8px);overflow-x:auto;cursor:default}
+.ntb .btn.sm{min-height:36px;min-width:36px;padding:0 6px}
+.ntb .btn.on{border-color:var(--amber);background:#2a2210;color:var(--ink)}
+.btn svg{flex:0 0 auto}
+.pinwrap{position:relative}
+.pinstaff{position:sticky;top:0;z-index:8;background:var(--bg);padding:8px 0 6px;margin:-4px 0 8px;box-shadow:0 8px 12px -8px rgba(0,0,0,.6)}
+html.embedded .pinstaff{position:relative}
 .keys{display:flex;position:relative;height:110px;user-select:none;touch-action:none}
 .keys .w{flex:1;background:#f5f2ea;border:1px solid #888;border-radius:0 0 6px 6px;position:relative;cursor:pointer;display:flex;align-items:flex-end;justify-content:center;font-size:10px;color:#666;padding-bottom:4px}
 .keys .w.down,.keys .b.down{background:var(--amber)}
@@ -139,6 +151,6 @@ input[type=checkbox]{width:20px;height:20px;accent-color:var(--amber);flex:0 0 a
 <script src="scan.js"></script>
 <script src="coach.js"></script>
 <script>MS.boot();</script>
-<script src="embed.js" data-root="#app" data-docks=".sugg,.toast" data-covers=".modal"></script>
+<script src="embed.js" data-root="#app" data-docks=".sugg,.toast" data-covers=".modal" data-pins=".pinstaff"></script>
 </body>
 </html>

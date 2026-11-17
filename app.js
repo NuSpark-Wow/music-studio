@@ -2,10 +2,11 @@
 (function () {
   const MS = window.MS = { screens: {}, a: {} };
   const COLORS = ['#f2b33d', '#4fc3b8', '#b39dfa', '#f08a6b', '#7fb2ff', '#d9d4c8'];
-  const INK = { '#f2b33d': '#9a5f00', '#4fc3b8': '#0b6f67', '#b39dfa': '#5b3fc4', '#f08a6b': '#b2401f', '#7fb2ff': '#1f5fbf', '#d9d4c8': '#444444' };
+  // note colors on white paper: melody black like printed music, other parts dark colors (never gray: gray is the melody overlay)
+  const INK = { '#f2b33d': '#141414', '#4fc3b8': '#1f4fa8', '#b39dfa': '#5b2fa0', '#f08a6b': '#a32020', '#7fb2ff': '#1d6b38', '#d9d4c8': '#8a4b0f' };
   const SEC_COLOR = n => /intro|outro/i.test(n) ? '#8a8f9c' : /chorus/i.test(n) ? '#f2b33d' : /bridge/i.test(n) ? '#b39dfa' : /solo|break/i.test(n) ? '#f08a6b' : '#4fc3b8';
   MS.SEC_COLOR = SEC_COLOR;
-  MS.noteColor = p => MS.S.paper === 'dark' ? p.color : (INK[p.color] || '#141414');
+  MS.noteColor = p => MS.S.paper === 'dark' ? (p.color === '#f2b33d' ? '#f2ede0' : p.color) : (INK[p.color] || '#141414');
   let uid = Date.now() % 100000;
   MS.id = pfx => (pfx || 'x') + (++uid).toString(36);
   const esc = MS.esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
@@ -23,7 +24,7 @@
       sections: [{ id: s1, name: 'Verse 1', bars: 4 }, { id: s2, name: 'Chorus', bars: 4 }],
       parts: [part('Melody', 'melody', 'Grand piano', COLORS[0], { vol: 0.85 }), part('Harmony', 'harmony', 'Violins', COLORS[1], { vol: 0.6, pan: -0.25, rev: 0.35 }), part('Bass', 'bass', 'Bass guitar', COLORS[3], { clef: 'bass', vol: 0.75, rev: 0.1 })],
       chords: {}, chordPart: { on: false, inst: 'Grand piano', style: 'Block', ens: 'solo', vol: 0.5, rev: 0.3, echo: 0, pan: 0.2, bass: false },
-      drums: { style: 'None', vol: 0.6, skip: {} },
+      drums: { style: 'None', vol: 0.6, skip: {} }, perc: { on: {}, off: {}, vol: 0.55 },
       vocals: { brief: { about: '', mood: '', words: '' }, lyrics: {}, locked: {}, lead: {}, bgv: { on: false, count: 'A trio', type: 'Harmony', where: 'Chorus only', blend: 'Soft behind', picked: [] }, vol: 0.9, rev: 0.3, echo: 0.1, offset: 0 }
     };
   };
@@ -90,6 +91,7 @@
     s.parts.forEach(p => { p.notes = p.notes || {}; p.dyn = p.dyn || {}; });
     s.layers = s.layers || []; s.master = Object.assign({ vol: 0.9, punch: 0, room: 'Studio', fadeIn: 0, fadeOut: 0, bypass: false }, s.master || {});
     s.vocals.bgvMix = s.vocals.bgvMix || { vol: 0.8, rev: 0.5, echo: 0.1, pan: 0 };
+    s.perc = Object.assign({ on: {}, off: {}, vol: 0.55 }, s.perc || {});
     return s;
   }
   MS.fixSong = fixSong;
@@ -128,7 +130,19 @@
     MS.closeModal(); const m = document.createElement('div'); m.className = 'modal'; m.innerHTML = `<div class="box" role="dialog" aria-modal="true">${html}</div>`;
     m.addEventListener('click', e => { if (e.target === m) MS.closeModal(); }); document.body.appendChild(m); return m;
   };
-  MS.closeModal = () => { const m = document.querySelector('.modal'); if (m) m.remove(); };
+  MS.closeModal = () => { const m = document.querySelector('.modal'); if (m) m.remove(); if (MS._askDone) { const f = MS._askDone; MS._askDone = null; f(null); } };
+  // in-app question box (replaces the browser's pop-up, which shows the web address).
+  // buttons: [[label, value, 'primary'|'danger'|''], ...]; resolves to the value, or null if closed
+  MS.ask = function (title, text, buttons) {
+    buttons = buttons || [['Yes', true, 'primary'], ['Cancel', null, '']];
+    return new Promise(res => {
+      MS.modal(`<div style="max-width:460px;margin:0 auto"><h2>${esc(title)}</h2>${text ? `<div class="small" style="color:#ddd8cc;margin-top:8px;line-height:1.5">${esc(text)}</div>` : ''}
+        <div class="row" style="margin-top:16px;flex-wrap:wrap">${buttons.map((b, i) => `<button class="btn ${b[2] === 'primary' ? 'primary' : ''}" style="${b[2] === 'danger' ? 'background:#7a2a1c;border-color:#a8412c;color:#fff' : ''}" data-ask="${i}">${esc(b[0])}</button>`).join('')}</div></div>`);
+      MS._askDone = res;
+      document.querySelectorAll('[data-ask]').forEach(el => el.onclick = () => { const v = buttons[+el.dataset.ask][1]; MS._askDone = null; MS.closeModal(); res(v); });
+      const first = document.querySelector('[data-ask]'); if (first) first.focus();
+    });
+  };
   // choices → pill buttons; call is JS source that takes the choice as its last argument, e.g. "MS.a.bgv('count',"
   MS.seg = function (choices, active, call, cls) {
     return `<div class="seg" role="group">${choices.map(c => `<button type="button" class="pill ${cls || ''} ${c === active ? 'on' : ''}" aria-pressed="${c === active}" onclick='${call}${JSON.stringify(c).replace(/'/g, "&#39;")})'>${esc(c)}</button>`).join('')}</div>`;
@@ -202,8 +216,9 @@
   MS.a.classic = function (k) { MS.openSong(MS.fromClassic(k)); MS.go('studio'); };
   MS.a.openLib = id => { const e = MS.lib.songs[id]; if (e) { MS.openSong(e.song); MS.go('studio'); MS.toast('Opened “' + e.song.title + '”'); } };
   MS.a.copyLib = id => { const e = MS.lib.songs[id]; if (!e) return; const c = JSON.parse(JSON.stringify(e.song)); c.title = e.song.title + ' (copy)'; delete c.parentId; MS.openSong(c, { copy: true }); MS.render(); MS.toast('Copy made and opened.'); };
-  MS.a.delLib = function (id) {
-    const e = MS.lib.songs[id]; if (!e || !confirm('Delete “' + e.song.title + '” from this device? (Download its song file first if you want a backup.)')) return;
+  MS.a.delLib = async function (id) {
+    const e = MS.lib.songs[id]; if (!e) return;
+    if (!(await MS.ask('Delete “' + e.song.title + '”?', 'This removes it from this device. Download its song file first if you want a backup.', [['Delete it', true, 'danger'], ['Keep it', null, '']]))) return;
     delete MS.lib.songs[id]; if (MS.delVocal) MS.delVocal(id);
     if (S.song && S.song.id === id) { const next = MS.songList()[0]; if (next) MS.openSong(next.song); else { S.song = null; MS.lib.cur = null; } }
     writeLib(); MS.render();
@@ -280,7 +295,8 @@
     'Country': { tempo: 112, mel: ['Acoustic guitar', 'solo'], har: ['Violins', 'solo'], bass: 'Bass guitar', drums: 'Country', chords: ['Acoustic guitar', 'Strum'], bassStyle: 'pop', echo: 0.05, rev: 0.2, d: 'Acoustic guitar, fiddle and a two-step beat.' },
     'Hip-hop': { tempo: 88, mel: ['Synth', 'solo'], har: ['Electric piano', 'solo'], bass: 'Bass guitar', drums: 'Hip-hop', chords: ['Synth', 'Sustained'], bassStyle: 'pop', echo: 0.2, rev: 0.2, d: 'Laid-back beat, synths and keys.' },
     'Soft ballad': { tempo: 70, mel: ['Grand piano', 'solo'], har: ['Violins', 'section'], bass: 'Bass guitar', drums: 'Soft ballad', chords: ['Grand piano', 'Arpeggio'], bassStyle: 'whole', echo: 0.1, rev: 0.45, d: 'Gentle piano and strings.' },
-    'March': { tempo: 116, mel: ['Trumpet', 'section'], har: ['French horn', 'section'], bass: 'Tuba', drums: 'March', chords: ['Trombone', 'Block'], bassStyle: 'pop', echo: 0, rev: 0.3, d: 'Brass band with snare drums.' }
+    'March': { tempo: 116, mel: ['Trumpet', 'section'], har: ['French horn', 'section'], bass: 'Tuba', drums: 'March', chords: ['Trombone', 'Block'], bassStyle: 'pop', echo: 0, rev: 0.3, d: 'Brass band with snare drums.' },
+    'World': { tempo: 100, mel: ['Spanish guitar', 'solo'], har: ['Marimba', 'solo'], bass: 'Bass guitar', drums: 'Latin', chords: ['Spanish guitar', 'Strum'], bassStyle: 'pop', echo: 0.05, rev: 0.3, d: 'Sounds from around the world: Latin, Indian, Caribbean.' }
   };
   // three sub-styles under each style: each changes the background layers and a few sounds
   const L = (preset, vol, extra) => Object.assign({ preset, vol: vol || 0.55 }, extra || {});
@@ -294,7 +310,8 @@
     'Country': { 'Fiddle and strum': { layers: [L('Guitar strum', 0.6)], chordsOff: true }, 'Honky-tonk piano': { layers: [L('Piano arpeggio', 0.55)], chords: ['Grand piano', 'Block'] }, 'Country organ': { layers: [L('Organ pad', 0.6), L('Guitar strum', 0.45)], chordsOff: true } },
     'Hip-hop': { 'Lo-fi keys': { layers: [L('Electric piano', 0.55)], tempo: -8 }, 'Synth bounce': { layers: [L('Synth pulse', 0.5)] }, 'Soul sample': { layers: [L('Organ pad', 0.55), L('String pad', 0.45)] } },
     'Soft ballad': { 'Piano and strings': { layers: [L('String pad', 0.55)] }, 'Acoustic': { layers: [L('Guitar strum', 0.55)], mel: ['Acoustic guitar', 'solo'], chordsOff: true }, 'Choir glow': { layers: [L('Choir ooh', 0.55)] } },
-    'March': { 'Brass band': { layers: [L('Brass swells', 0.6)] }, 'Fife and drum': { layers: [], mel: ['Flute', 'section'], chordsOff: true }, 'Grand parade': { layers: [L('Brass swells', 0.7), L('Low drone', 0.55)] } }
+    'March': { 'Brass band': { layers: [L('Brass swells', 0.6)] }, 'Fife and drum': { layers: [], mel: ['Flute', 'section'], chordsOff: true }, 'Grand parade': { layers: [L('Brass swells', 0.7), L('Low drone', 0.55)] } },
+    'World': { 'Latin': { layers: [L('Spanish strum', 0.5)], perc: { congas: 1, shaker: 1 }, chordsOff: true }, 'Indian': { layers: [L('Tanpura drone', 0.6)], mel: ['Sitar', 'solo'], har: ['Bansuri', 'solo'], drums: 'None', perc: { tabla: 1 }, chordsOff: true, tempo: -12 }, 'Caribbean': { layers: [L('Steel pan pulse', 0.4)], mel: ['Steel drums', 'solo'], har: ['Marimba', 'solo'], drums: 'Reggae', perc: { bongos: 1, shaker: 1 }, chords: ['Acoustic guitar', 'Strum'] } }
   };
   MS.applyStyle = function (song, name, subName) {
     const st = MS.STYLES[name]; if (!st) return;
@@ -306,7 +323,9 @@
     if (har) Object.assign(har, { inst: h[0], ens: h[1], size: h[2] || 'Chamber (12)', rev: st.rev + 0.05 });
     song.sections.forEach(s => { if (!song.chords[s.id] || !song.chords[s.id].some(Boolean)) song.chords[s.id] = MS.suggestChords(song, s.id); });
     const b = MS.makeBass(song, null, st.bassStyle); Object.assign(b, { inst: st.bass, ens: A().INST[st.bass].ens ? 'section' : 'solo', artic: st.bassArtic || 'legato' });
-    if (song.ts === 3 && /Pop|Rock|Country|Hip|R&B/.test(st.drums)) song.drums.style = 'Waltz'; else song.drums.style = st.drums;
+    const dst = (sub && sub.drums) || st.drums;
+    if (song.ts === 3 && /Pop|Rock|Country|Hip|R&B|Latin|Reggae/.test(dst)) song.drums.style = 'Waltz'; else song.drums.style = dst;
+    song.perc = { on: Object.assign({}, (sub && sub.perc) || st.perc || {}), off: {}, vol: (song.perc && song.perc.vol) || 0.55 };
     const c = (sub && sub.chords) || st.chords;
     Object.assign(song.chordPart, { on: !(sub && sub.chordsOff), inst: c[0], style: c[1], ens: A().INST[c[0]].ens ? 'section' : 'solo', rev: st.rev });
     song.layers = [];
