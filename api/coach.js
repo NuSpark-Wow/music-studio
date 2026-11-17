@@ -11,9 +11,9 @@ const FAST = process.env.CLAUDE_FAST_MODEL || "claude-haiku-5-5";
 const HOURLY_LIMIT = 120;
 const hits = new Map();
 
-const INSTRUMENTS = ["Grand piano", "Electric piano", "Organ", "Harpsichord", "Celesta", "Violins", "Violas", "Cellos", "Double bass", "Harp", "Flute", "Oboe", "Clarinet", "Bassoon", "Trumpet", "French horn", "Trombone", "Tuba", "Glockenspiel", "Timpani", "Acoustic guitar", "Electric guitar", "Bass guitar", "Synth", "Choir"];
-const DRUMS = ["None", "Pop", "Rock", "Soft ballad", "R&B", "Hip-hop", "Jazz swing", "Country", "Waltz", "March"];
-const STYLES = ["Pop", "R&B", "Rock", "Jazz swing", "Classical", "Full orchestra", "Country", "Hip-hop", "Soft ballad", "March"];
+const INSTRUMENTS = ["Grand piano", "Electric piano", "Organ", "Harpsichord", "Celesta", "Violins", "Violas", "Cellos", "Double bass", "Harp", "Flute", "Oboe", "Clarinet", "Bassoon", "Trumpet", "French horn", "Trombone", "Tuba", "Glockenspiel", "Timpani", "Acoustic guitar", "Electric guitar", "Bass guitar", "Synth", "Choir", "Spanish guitar", "Marimba", "Sitar", "Tanpura", "Bansuri", "Oud", "Koto", "Guzheng", "Erhu", "Shakuhachi", "Kalimba", "Steel drums", "Bagpipes", "Tin whistle", "Fiddle", "Banjo", "Harmonica", "Accordion"];
+const DRUMS = ["None", "Pop", "Rock", "Soft ballad", "R&B", "Hip-hop", "Jazz swing", "Country", "Waltz", "March", "Latin", "Reggae"];
+const STYLES = ["Pop", "R&B", "Rock", "Jazz swing", "Classical", "Full orchestra", "Country", "Hip-hop", "Soft ballad", "March", "World"];
 
 async function anthropic(body) {
   const r = await fetch("https://api.anthropic.com/v1/messages", {
