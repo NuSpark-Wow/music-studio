@@ -300,6 +300,7 @@ async function scan(body) {
 
 // ---------- handler ----------
 module.exports = async (req, res) => {
+  if (!(await require("./_lwgate")(req, res, "music-studio"))) return;
   if (!allowedRequest(req)) return blockRequest(res);
   if (req.method === "GET") return res.json({ ok: true, anthropic_key_set: !!process.env.ANTHROPIC_API_KEY, model: MODEL, fast_model: FAST });
   if (req.method !== "POST") return res.status(405).json({ error: "POST only" });
