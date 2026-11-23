@@ -21,6 +21,24 @@
     'Kalimba sparkle': { inst: 'Kalimba', style: 'Arpeggio', ens: 'solo', octave: 1, world: 1, d: 'African thumb piano twinkling on top.' }
   };
   MS.LAYER_PRESETS = PRESETS;
+  // One-click sound presets for the whole mix (master + every channel's reverb, echo and tone).
+  const SOUND = {
+    '🎙 Motown': { m: { room: 'Studio', punch: 0.5 }, rev: 0.35, echo: 0.05, treble: 2, d: 'Warm, tight 1960s studio sound.' },
+    '🏟 \'80s Arena': { m: { room: 'Stadium', punch: 0.7 }, rev: 0.7, echo: 0.25, treble: 3, d: 'Big, roomy, larger-than-life.' },
+    '📻 Lo-Fi': { m: { room: 'Dry', punch: 0.25, vol: 0.85 }, rev: 0.15, echo: 0, treble: -7, d: 'Soft, mellow, a little muffled, like an old radio.' },
+    '🎻 Concert Hall': { m: { room: 'Concert hall', punch: 0.1 }, rev: 0.6, echo: 0, treble: 0, d: 'Natural and open, like a live orchestra.' },
+    '⛪ Gospel Church': { m: { room: 'Church', punch: 0.35 }, rev: 0.75, echo: 0.1, treble: 1, d: 'Rich, ringing and uplifting.' },
+    '🔊 Modern Pop': { m: { room: 'Studio', punch: 0.85 }, rev: 0.25, echo: 0.15, treble: 4, d: 'Loud, bright and punchy.' }
+  };
+  MS.a.soundPreset = function (name) {
+    const P = SOUND[name]; if (!P) return;
+    MS.change(s => {
+      ensure(s); Object.assign(s.master, P.m);
+      channels(s).forEach(c => { if (['drums', 'perc'].includes(c.key) || String(c.key).startsWith('perc:')) return; const o = objOf(s, c.path); if (!o) return; o.rev = P.rev; o.echo = P.echo; o.treble = P.treble; });
+    });
+    MS.toast(name.replace(/^\S+\s/, '') + ' sound set. Press Play to hear it.');
+    if (MS.firstSongStep === 4) MS.a.firstSongNext();
+  };
   let raf = null;
 
   function ensure(s) {
@@ -107,6 +125,7 @@
           <label class="f">Punch (compression) <span class="muted" style="text-transform:none">${Math.round(M.punch * 100)}%</span><input type="range" min="0" max="1" step="0.05" value="${M.punch}" onchange="MS.a.mset('punch',+this.value)"></label>
           <label class="f">Fade in <span class="muted" style="text-transform:none">${M.fadeIn}s</span><input type="range" min="0" max="8" step="0.5" value="${M.fadeIn}" onchange="MS.a.mset('fadeIn',+this.value)"></label>
           <label class="f">Fade out <span class="muted" style="text-transform:none">${M.fadeOut}s</span><input type="range" min="0" max="12" step="0.5" value="${M.fadeOut}" onchange="MS.a.mset('fadeOut',+this.value)"></label></div>
+        <div class="level">One-click sound presets</div><div class="row" style="gap:6px;flex-wrap:wrap">${Object.entries(SOUND).map(([k, p]) => `<button class="btn sm" title="${esc(p.d)}" onclick="MS.a.soundPreset(${esc(JSON.stringify(k))})">${esc(k)}</button>`).join('')}</div><div class="tiny muted">Sets the room, punch, reverb and echo for the whole mix. Fine-tune anything after.</div>
         <div class="level">Room sound</div>${MS.seg(['Dry', 'Studio', 'Concert hall', 'Church', 'Stadium'], M.room, "MS.a.mset('room',")}
         <div class="row"><label class="row small"><input type="checkbox" ${M.bypass ? 'checked' : ''} onchange="MS.a.mset('bypass',this.checked)"> Before / after: hear it without the master effects</label></div>
         <div class="tiny muted">Fades play on the whole song and in your downloads. Every download is also evened out in loudness.</div></div>
@@ -174,4 +193,33 @@
     };
     raf = requestAnimationFrame(tick);
   }
+})();
+
+/* Your First Song in 10 Minutes: a guided path that floats over every room, one step at a time (nothing is saved). */
+(function () {
+  const MS = window.MS, S = MS.S;
+  const STEPS = [
+    { t: 'Start a new song', d: 'We start fresh so nothing gets mixed up. Tap "Do it for me" or press "Start a new song" on the home page.', go: () => MS.a.newSong(), b: 'Do it for me' },
+    { t: 'Make a melody', d: 'In the studio, tap the staff (or press the big Sing button) and add about 8 notes. Short and simple is perfect. Tap Play to hear it.', go: () => MS.go('studio'), b: 'Take me to the studio' },
+    { t: 'Add a background layer', d: 'In the Control Room, tap "Add a layer" and pick one, like String pad or Guitar strum. It plays chords under your melody automatically.', go: () => MS.go('control'), b: 'Take me to the Control Room' },
+    { t: 'Add words (optional)', d: 'In the Vocal Room, tell Mr. Paul what your song is about and pick lyrics, or skip this step if you want an instrumental.', go: () => MS.go('vocal'), b: 'Take me to the Vocal Room' },
+    { t: 'Pick a sound', d: 'Back in the Control Room, scroll to Master and tap a one-click sound preset like Motown or Lo-Fi. Then press Play.', go: () => MS.go('control'), b: 'Take me there' },
+    { t: 'Save and download', d: 'Name your song and download it as an MP3. That\'s it: you made a song!', go: () => MS.go('save'), b: 'Take me there' }
+  ];
+  MS.firstSongStep = -1;
+  function panel() {
+    let el = document.getElementById('firstSongPanel');
+    if (MS.firstSongStep < 0) { if (el) el.remove(); return; }
+    if (!el) { el = document.createElement('div'); el.id = 'firstSongPanel'; el.style.cssText = 'position:fixed;right:14px;bottom:14px;z-index:60;max-width:330px;background:#1c2230;color:#f3efe6;border:2px solid #f5b942;border-radius:14px;padding:12px 14px;box-shadow:0 8px 24px rgba(0,0,0,.45);font:14px/1.45 Inter,system-ui,sans-serif'; document.body.appendChild(el); }
+    const i = MS.firstSongStep, st = STEPS[i];
+    el.innerHTML = '<div style="display:flex;justify-content:space-between;gap:8px;align-items:center"><b style="color:#f5b942">🎵 First Song · Step ' + (i + 1) + ' of ' + STEPS.length + '</b><button type="button" aria-label="Close the guided path" style="background:none;border:0;color:#f3efe6;font-size:18px;cursor:pointer" onclick="MS.a.firstSongEnd()">✕</button></div>' +
+      '<div style="height:5px;background:#333b4d;border-radius:4px;margin:6px 0 8px"><div style="height:5px;width:' + Math.round((i + 1) / STEPS.length * 100) + '%;background:#f5b942;border-radius:4px"></div></div>' +
+      '<div style="font-weight:700;font-size:15px">' + st.t + '</div><div style="margin:4px 0 10px">' + st.d + '</div>' +
+      '<div style="display:flex;gap:6px;flex-wrap:wrap"><button type="button" class="btn sm" onclick="MS.a.firstSongGo()">' + st.b + '</button><button type="button" class="btn sm primary" onclick="MS.a.firstSongNext()">' + (i === STEPS.length - 1 ? 'Finish 🎉' : 'Done, next step ▶') + '</button>' + (i > 0 ? '<button type="button" class="btn sm ghost" onclick="MS.a.firstSongBack()">◀ Back</button>' : '') + '</div>';
+  }
+  MS.a.firstSong = function () { MS.firstSongStep = 0; panel(); };
+  MS.a.firstSongGo = function () { const st = STEPS[MS.firstSongStep]; if (st) st.go(); if (MS.firstSongStep === 0) MS.a.firstSongNext(); else panel(); };
+  MS.a.firstSongNext = function () { if (MS.firstSongStep >= STEPS.length - 1) { MS.a.firstSongEnd(); MS.toast('You made your first song! 🎉 Try another style next.'); return; } MS.firstSongStep++; panel(); };
+  MS.a.firstSongBack = function () { if (MS.firstSongStep > 0) MS.firstSongStep--; panel(); };
+  MS.a.firstSongEnd = function () { MS.firstSongStep = -1; panel(); };
 })();
