@@ -200,9 +200,9 @@
   const MS = window.MS, S = MS.S;
   const STEPS = [
     { t: 'Start a new song', d: 'We start fresh so nothing gets mixed up. Tap "Do it for me" or press "Start a new song" on the home page.', go: () => MS.a.newSong(), b: 'Do it for me' },
-    { t: 'Make a melody', d: 'In the studio, tap the staff (or press the big Sing button) and add about 8 notes. Short and simple is perfect. Tap Play to hear it.', go: () => MS.go('studio'), b: 'Take me to the studio' },
+    { t: 'Make a melody', d: 'In the studio, tap the staff or the piano keys (or tap 🎤 Sing your tune and sing it) and add about 8 notes. Short and simple is perfect. Tap Play to hear it.', go: () => MS.go('studio'), b: 'Take me to the studio' },
     { t: 'Add a background layer', d: 'In the Control Room, tap "Add a layer" and pick one, like String pad or Guitar strum. It plays chords under your melody automatically.', go: () => MS.go('control'), b: 'Take me to the Control Room' },
-    { t: 'Add words (optional)', d: 'In the Vocal Room, tell Mr. Paul what your song is about and pick lyrics, or skip this step if you want an instrumental.', go: () => MS.go('vocal'), b: 'Take me to the Vocal Room' },
+    { t: 'Give it a shape', d: 'On the song map, tap 🧩 Song shape and pick Verse · Verse · Chorus · Verse. Your verse repeats by itself. Then add a few notes to the Chorus.', go: () => MS.go('studio'), b: 'Take me to the studio' },
     { t: 'Pick a sound', d: 'Back in the Control Room, scroll to Master and tap a one-click sound preset like Motown or Lo-Fi. Then press Play.', go: () => MS.go('control'), b: 'Take me there' },
     { t: 'Save and download', d: 'Name your song and download it as an MP3. That\'s it: you made a song!', go: () => MS.go('save'), b: 'Take me there' }
   ];

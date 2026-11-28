@@ -52,12 +52,66 @@
   function songMap() {
     const s = S.song, sec = MS.sec();
     return `<div class="card col"><div class="row" style="justify-content:space-between"><div class="row" style="gap:6px"><div class="label">Song map</div>${MS.helpBtn('songmap')}</div>
-      <div class="row"><button class="btn sm" onclick="MS.a.addSection()">+ Section</button><button class="btn sm mod" onclick="MS.a.copySection()">Copy</button><button class="btn sm mod" onclick="MS.a.renameSection()">Rename</button>
+      <div class="row"><button class="btn sm" onclick="MS.a.addSection()">+ Section</button><button class="btn sm" onclick="MS.a.repeatSection()" title="Play this part again, the same way">↻ Repeat</button><button class="btn sm" onclick="MS.a.songShape()">🧩 Song shape</button>${sec.link ? `<button class="btn sm" onclick="MS.a.unlinkSection()">✂ Make it different</button>` : ''}<button class="btn sm mod" onclick="MS.a.copySection()">Copy</button><button class="btn sm mod" onclick="MS.a.renameSection()">Rename</button>
       <button class="btn sm adv" onclick="MS.a.moveSection(-1)" aria-label="Move section left">◀</button><button class="btn sm adv" onclick="MS.a.moveSection(1)" aria-label="Move section right">▶</button>
       <button class="btn sm mod" onclick="MS.a.bars(-1)" aria-label="Fewer bars">− bar</button><button class="btn sm mod" onclick="MS.a.bars(1)" aria-label="More bars">+ bar</button><button class="btn sm" onclick="MS.a.delSection()">Delete</button></div></div>
-      <div class="map">${s.sections.map(x => `<button type="button" class="${x.id === sec.id ? 'sel' : ''}" style="flex-grow:${x.bars};background:${MS.SEC_COLOR(x.name)}" onclick="MS.a.pickSection('${x.id}')" aria-pressed="${x.id === sec.id}">${esc(x.name)}<span>${x.bars} bars${s.vocals.lyrics[x.id] ? ' · lyrics' : ''}</span></button>`).join('')}</div>
-      <div class="tiny muted">Editing <b style="color:var(--ink)">${esc(sec.name)}</b>. Tap a block to edit it. Play song plays every block in order.</div></div>`;
+      <div class="map">${s.sections.map(x => `<button type="button" class="${x.id === sec.id ? 'sel' : ''}" style="flex-grow:${x.bars};background:${MS.SEC_COLOR(x.name)}" onclick="MS.a.pickSection('${x.id}')" aria-pressed="${x.id === sec.id}">${esc(x.name)}<span>${x.bars} bars${x.link ? ' · ↻ ' + esc((s.sections.find(y => y.id === x.link) || {}).name || '') : ''}</span></button>`).join('')}</div>
+      <div class="tiny muted">Editing <b style="color:var(--ink)">${esc(sec.name)}</b>${repeatNote(s, sec)}. Tap a block to edit it. Play song plays every block in order.</div></div>`;
   }
+  function repeatNote(s, sec) {
+    if (sec.link) { const r = s.sections.find(y => y.id === sec.link); return r ? `, which repeats <b style="color:var(--ink)">${esc(r.name)}</b>. Changes here change ${esc(r.name)} too (tap ✂ Make it different to change only this one)` : ''; }
+    const reps = s.sections.filter(y => y.link === sec.id); return reps.length ? `. It repeats as ${reps.map(y => '<b style="color:var(--ink)">' + esc(y.name) + '</b>').join(', ')}, so those change too` : '';
+  }
+  const repeatName = (s, name) => { const base = name.replace(/ \d+$/, ''); if (!/verse/i.test(base)) return base; return base + ' ' + (s.sections.filter(x => /verse/i.test(x.name)).length + 1); };
+  MS.a.repeatSection = function () {
+    const cur = MS.sec();
+    MS.change(s => {
+      const root = s.sections.find(x => x.id === (cur.link || cur.id)), id = MS.id('s'), i = s.sections.findIndex(x => x.id === cur.id);
+      s.sections.splice(i + 1, 0, { id, name: repeatName(s, root.name), bars: root.bars, link: root.id });
+      s.parts.forEach(p => { if (p.notes[root.id]) p.notes[id] = JSON.parse(JSON.stringify(p.notes[root.id])); });
+      if (s.chords[root.id]) s.chords[id] = s.chords[root.id].slice();
+      MS._repeatMsg = `${s.sections[i + 1].name} repeats ${root.name}. Change either one and both change.`;
+    });
+    MS.toast(MS._repeatMsg);
+  };
+  MS.a.unlinkSection = function () {
+    MS.change(s => { const x = s.sections.find(y => y.id === S.sec); delete x.link; });
+    MS.toast('Done. This section is its own now, so you can change it without changing the others.');
+  };
+  const SHAPES = [
+    ['Verse', 'Verse', 'Chorus', 'Verse'],
+    ['Verse', 'Chorus', 'Verse', 'Chorus'],
+    ['Intro', 'Verse', 'Chorus', 'Verse', 'Chorus', 'Outro'],
+    ['Verse', 'Chorus', 'Verse', 'Chorus', 'Bridge', 'Chorus'],
+    ['Intro', 'Verse', 'Verse', 'Chorus', 'Verse', 'Chorus', 'Outro'],
+    ['Intro', 'Verse', 'Chorus', 'Verse', 'Chorus', 'Bridge', 'Chorus', 'Outro']
+  ];
+  MS.a.songShape = function () {
+    MS.modal(`<h2>Pick a song shape</h2><div class="col" style="margin-top:12px"><div class="small muted">Your first Verse and first Chorus are used everywhere they repeat, so you write each part once. Parts you don't have yet are added empty, ready to fill in.</div>
+      ${SHAPES.map((sh, i) => `<button class="opt lesson-card" onclick="MS.a._shape(${i})"><b>${sh.join(' · ')}</b><span class="tiny" style="color:#ddd8cc">${sh.length} parts</span></button>`).join('')}
+      <div class="tiny muted">Other parts you made (like a Solo) are kept at the end. Undo puts everything back.</div><div class="row"><button class="btn" onclick="MS.closeModal()">Cancel</button></div></div>`);
+  };
+  MS.a._shape = function (i) {
+    const sh = SHAPES[i]; MS.closeModal();
+    MS.change(s => {
+      const roots = {}, used = new Set();
+      ['Intro', 'Verse', 'Chorus', 'Bridge', 'Outro'].forEach(n => { const f = s.sections.find(x => !x.link && new RegExp('^' + n, 'i').test(x.name)); if (f) roots[n] = f; });
+      const out = []; let verses = 0;
+      sh.forEach(n => {
+        if (n === 'Verse') verses++;
+        const nm = n === 'Verse' ? 'Verse ' + verses : n;
+        if (!roots[n]) { const id = MS.id('s'); roots[n] = { id, name: nm, bars: 4 }; out.push(roots[n]); used.add(id); return; }
+        if (!used.has(roots[n].id)) { roots[n].name = nm; out.push(roots[n]); used.add(roots[n].id); return; }
+        const id = MS.id('s'), r = roots[n]; out.push({ id, name: nm, bars: r.bars, link: r.id });
+        s.parts.forEach(p => { if (p.notes[r.id]) p.notes[id] = JSON.parse(JSON.stringify(p.notes[r.id])); });
+        if (s.chords[r.id]) s.chords[id] = s.chords[r.id].slice();
+      });
+      const extras = s.sections.filter(x => !used.has(x.id) && !x.link);
+      s.sections = out.concat(extras);
+      if (!s.sections.some(x => x.id === S.sec)) S.sec = s.sections[0].id;
+    });
+    MS.toast('New song shape: ' + sh.join(' · ') + '. Tap Play song to hear it.');
+  };
   MS.a.pickSection = id => { S.sec = id; S.sel = null; MS.render(); };
   MS.a.addSection = function () {
     const names = ['Intro', 'Verse', 'Chorus', 'Bridge', 'Solo', 'Outro'];
@@ -372,6 +426,7 @@
       <div class="row" style="justify-content:space-between;margin-top:6px"><div class="label">Note length</div>${MS.helpBtn('lengths', '?')}</div><div class="row" style="gap:6px">${lens}</div>
       <div class="row" style="gap:6px"><button class="btn sm" onclick="MS.a.addRest()">Add a rest</button>${S.level !== 'Basic' ? `<label class="row tiny mod"><input type="checkbox" ${S.view.names !== false ? 'checked' : ''} onchange="MS.a.names(this.checked)"> Show note names</label>` : ''}</div>
       <div class="keys pk" aria-label="Piano keyboard"></div>
+      ${singBox(p)}
       <div class="tiny muted">Tap a key or the staff to add a note${n ? ', or to change the selected note' : ''}. To move a note, drag it up or down${'ontouchstart' in window ? ' (press and hold it first)' : ''}.</div>
       ${n ? `<div class="card tight col" style="background:var(--panel2)"><div class="row" style="justify-content:space-between"><b>Selected: ${n.p == null ? 'rest' : MSS.name(n.p, S.song.key)} · ${(LENS.find(l => l[0] === n.d) || [0, fmtBeats(n.d) + ' beats'])[1]}</b><button class="btn sm ghost" onclick="MS.a.deselect()">Done</button></div>
         <div class="row" style="gap:6px"><button class="btn sm" onclick="MS.a.step(1)" aria-label="Higher">▲ Higher</button><button class="btn sm" onclick="MS.a.step(-1)" aria-label="Lower">▼ Lower</button><button class="btn sm adv" onclick="MS.a.step('semi+')">♯</button><button class="btn sm adv" onclick="MS.a.step('semi-')">♭</button>
@@ -379,6 +434,15 @@
         <div class="row" style="gap:6px"><button class="btn sm" onclick="MS.a.toggleRest()">${n.p == null ? 'Make it a note' : 'Make it a rest'}</button><button class="btn sm mod" onclick="MS.a.insertBefore()">Insert before</button><button class="btn sm" onclick="MS.a.del()">Delete</button></div>
         <div class="tiny muted">Tap a length above to change this note. Keyboard: arrows, Delete, R for rest.</div></div>` : ''}
     </div>`;
+  }
+  function singBox(p) {
+    if (MS._recording) return `<div class="card tight col" style="background:var(--panel2);border-color:#f08a6b"><b>🎤 Listening… sing your tune</b>
+      <div class="tiny muted">One “bomp,” “da” or “la” for each note, nice and slow.</div>
+      <div class="lvl" style="height:10px;border-radius:6px;background:#2a2f3a;overflow:hidden"><i style="display:block;height:100%;width:0;background:#4fc3b8;transition:width .08s"></i></div>
+      <button class="btn primary" onclick="MS.a.sing()">■ Stop and show my notes</button></div>`;
+    return `<div class="card tight col" style="background:var(--panel2)"><div class="row" style="justify-content:space-between"><b>🎤 Sing your tune</b>${MS.helpBtn('sing', '?')}</div>
+      <div class="tiny muted">Have a tune in your head? Sing one “bomp,” “da” or “la” for each note, slowly, in a quiet room. Words don't matter, only the notes. Your voice isn't added to the song: ${esc(p.inst)} plays what you sang.</div>
+      <div class="row" style="gap:8px"><button class="btn" onclick="MS.a.sing()">🎤 Sing your tune</button><label class="row tiny"><input type="checkbox" ${MS._click ? 'checked' : ''} onchange="MS._click=this.checked"> Play a click to keep the beat</label></div></div>`;
   }
   function drawKeys() { document.querySelectorAll('.keys.pk').forEach(drawKeysIn); }
   function drawKeysIn(el) {
@@ -413,7 +477,7 @@
   };
   function showHeard() {
     const h = MS._heard, p = MS.part(), s = S.song;
-    if (!h.notes.length) { MS.toast("I couldn't hear clear notes. Sing louder and slower, one note at a time, in a quiet room."); return; }
+    if (!h.notes.length) { MS.toast("I couldn't hear clear notes. Sing a little louder and slower, one “bomp” or “da” per note, in a quiet room."); return; }
     const bars = Math.max(1, Math.ceil(MS.used(h.notes) / s.ts));
     const r = MSS.render({ notes: h.notes, clef: p.clef, key: s.key, ts: s.ts, bars: Math.min(bars, 8), width: 900, names: true, paper: S.paper, color: MS.noteColor(p) });
     MS.modal(`<h2>Here's what I heard</h2><div class="col" style="margin-top:12px">${r.svg}
@@ -553,7 +617,7 @@
       ${s.chordPart.on ? strip('Chords · ' + s.chordPart.inst, '#d9d4c8', s.chordPart, 'chords') : ''}
       ${MS.vbuf ? strip('Lead vocal', '#f08a6b', s.vocals, 'vocal') : ''}
       ${s.drums.style !== 'None' ? `<div class="strip" style="border-top:3px solid #888"><b style="color:var(--ink)">Drums · ${esc(s.drums.style)}</b><label>Volume<input type="range" min="0" max="1" step="0.05" value="${s.drums.vol}" onchange="MS.change(x=>x.drums.vol=+this.value,{quiet:true})"></label></div>` : ''}</div>
-      <div class="tiny muted" style="margin-top:8px">Background singers are set in the Vocal Room.</div>`;
+`;
   }
   MS.a.mix = function (path, k, v) {
     MS.change(s => { const o = path === 'chords' ? s.chordPart : path === 'vocal' ? s.vocals : s.parts.find(p => 'p:' + p.id === path); o[k] = v; }, { quiet: true });

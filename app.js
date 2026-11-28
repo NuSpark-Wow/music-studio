@@ -104,8 +104,24 @@
   // every edit goes through change() so Undo works
   MS.change = function (fn, opts) {
     S.hist.push(JSON.stringify(S.song)); if (S.hist.length > 80) S.hist.shift(); S.fut = [];
-    fn(S.song); MS.save();
+    fn(S.song); MS.syncRepeats(S.song); MS.save();
     if (!(opts && opts.quiet)) MS.render();
+  };
+  // Repeats: a section with "link" plays the same music as the section it repeats.
+  // Whatever you change in one of them is copied to the others, so Verse 1 and Verse 2 stay the same.
+  MS.syncRepeats = function (s) {
+    const byId = id => s.sections.find(x => x.id === id);
+    s.sections.forEach(x => { if (x.link && (!byId(x.link) || x.link === x.id)) delete x.link; });
+    s.sections.filter(x => !x.link && s.sections.some(y => y.link === x.id)).forEach(root => {
+      const group = [root, ...s.sections.filter(y => y.link === root.id)];
+      const from = group.find(x => x.id === S.sec) || root;
+      group.forEach(m => {
+        if (m === from) return;
+        m.bars = from.bars;
+        s.parts.forEach(p => { if (p.notes[from.id]) p.notes[m.id] = JSON.parse(JSON.stringify(p.notes[from.id])); else delete p.notes[m.id]; });
+        if (s.chords[from.id]) s.chords[m.id] = s.chords[from.id].slice(); else delete s.chords[m.id];
+      });
+    });
   };
   MS.undo = function () {
     if (!S.hist.length) return MS.toast('Nothing to undo');
