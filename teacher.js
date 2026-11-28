@@ -43,7 +43,7 @@
       {
         id: 'listen', screen: 'studio', done: () => !!T.heard[sid()],
         say: { Basic: `Now listen. Press ▶ Play ${first.name}.`, Moderate: `Play ${first.name} and listen. Fix any note that sounds wrong.`, Advanced: `Play it back.` },
-        why: `Tap any note to move it up or down. Undo is always at the bottom.`,
+        why: `Tap any note to move it up or down. Undo is always on Mr. Paul's card.`,
         target: { text: '▶ Play ' }, act: ['Play it for me', () => { MS.a.playSection(); T.heard[sid()] = true; C.render(); }]
       },
       {
@@ -144,7 +144,7 @@
   };
   function pulse(st) {
     document.querySelectorAll('.tpulse').forEach(x => x.classList.remove('tpulse'));
-    if (lvl() !== 'Basic' || C.min) return;
+    if (lvl() !== 'Basic' || T.ui === 'off') return;
     const el = find(st.target); if (el) el.classList.add('tpulse');
   }
   T.act = function () { const st = T.next(); if (st.act) st.act[1](); };
@@ -153,46 +153,59 @@
   // ---------- Mr. Paul (cartoon teacher) ----------
   const FACE = `<svg viewBox="0 0 64 64" width="46" height="46" aria-hidden="true"><circle cx="32" cy="32" r="31" fill="#2a2433" stroke="#f2b33d" stroke-width="2"/><path d="M14 58c3-11 10-15 18-15s15 4 18 15" fill="#4fc3b8"/><path d="M27 44l5 6 5-6-5 3z" fill="#f2b33d"/><circle cx="32" cy="27" r="13" fill="#e8b98e"/><path d="M19 24c0-9 6-13 13-13s13 4 13 12c-3-4-8-5-13-5s-10 1-13 6z" fill="#5a4a3e"/><circle cx="27" cy="27" r="3.6" fill="none" stroke="#1d1f25" stroke-width="1.6"/><circle cx="37" cy="27" r="3.6" fill="none" stroke="#1d1f25" stroke-width="1.6"/><path d="M30.6 27h2.8" stroke="#1d1f25" stroke-width="1.6"/><circle cx="27" cy="27" r="1.1" fill="#1d1f25"/><circle cx="37" cy="27" r="1.1" fill="#1d1f25"/><path d="M27.5 33c2.5 2.5 6.5 2.5 9 0" stroke="#7a3e1d" stroke-width="1.8" fill="none" stroke-linecap="round"/><g fill="#f2b33d"><ellipse cx="52" cy="16" rx="3.4" ry="2.6" transform="rotate(-20 52 16)"/><rect x="54.6" y="4" width="1.6" height="12"/></g></svg>`;
 
-  // ---------- the bar (replaces the old suggestions bar) ----------
+  // ---------- Mr. Paul in the corner: an open card, a gold pill, or tucked away (replaces the full-width bar) ----------
+  // T.ui: 'open' (card), 'pill' (gold "Mr. Paul · Next step" button), 'off' (tiny tab at the edge). Nothing is saved: it resets each visit.
+  T.ui = null; T.hint = true; T.peekUntil = 0; let peekT = null;
+  function pillLabel(st) { if (/DONE/.test(st.k || '')) return '🎉 Done!'; return st.act || st.target ? 'Next step' : 'Help'; }
+  T.open = function () { T.ui = 'open'; T.peekUntil = 0; C.render(); };
+  T.tuck = function () { T.ui = 'pill'; T.hint = false; C.render(); };
+  T.off = function () { T.ui = 'off'; T.hint = false; T.ideas = false; C.render(); MS.toast('Mr. Paul is tucked away. Tap the 🧑‍🏫 tab on the right, or Help, to bring him back.'); };
+  T.back = function () { T.ui = 'pill'; C.render(); };
   C.render = function () {
     let el = document.getElementById('sugg');
     if (!el) { el = document.createElement('div'); el.id = 'sugg'; el.setAttribute('role', 'region'); el.setAttribute('aria-label', 'Mr. Paul, your music teacher'); document.body.appendChild(el); }
     const key = S.screen + '|' + (S.sec || '') + '|' + (S.song ? S.song.id : '');
     if (key !== C.key) { C.key = key; C.ideas = []; C.fill(true); }
     if (!C.ideas.length) C.ideas = C.local().slice(0, 3);
-    const st = T.next(), L = lvl();
-    el.className = 'sugg teach' + (C.min ? ' min' : '') + ' lv-' + L.toLowerCase();
-    // Advanced: Mr. Paul stays on call and only walks you through steps when you ask
-    if (L === 'Advanced' && !T.guide) {
-      el.innerHTML = `${T.ideas && !C.min ? ideasHtml() : ''}<div class="in">
-        <button class="tface" onclick="MS.teacher.help()" aria-label="Help from Mr. Paul">${FACE}<span>Mr. Paul</span></button>
-        <div class="tmsg"><div class="tk">ON CALL</div><div class="tsay">Need a hand? Ask me anything, or let me suggest your next move.</div></div>
-        <div class="tact"><button class="btn primary" onclick="MS.teacher.help()">💬 Ask Mr. Paul</button><button class="btn" onclick="MS.teacher.guide=true;MS.coach.render()">Next move</button></div>
-        <div class="ttools"><button class="btn sm thelp" onclick="MS.teacher.help()">❓ Help</button><button class="btn sm tidea ${T.ideas ? 'open' : ''}" onclick="MS.teacher.toggleIdeas()">💡 Ideas</button><button class="btn sm" onclick="MS.undo()">Undo</button><button class="btn sm ghost" onclick="MS.coach.toggle()">${C.min ? 'Show' : 'Hide'}</button></div></div>`;
-      return;
+    const L = lvl();
+    if (!T.ui) T.ui = L === 'Advanced' ? 'pill' : 'open';
+    const quietAdv = L === 'Advanced' && !T.guide;
+    const st = quietAdv ? { k: 'ON CALL', say: 'Need a hand? Ask me anything, or let me suggest your next move.', act: null } : T.next();
+    // a new step while tucked away: show a little speech bubble for a few seconds (not on Advanced)
+    const stepKey = st.k + '|' + st.say;
+    if (C.lastStep && stepKey !== C.lastStep && T.ui === 'pill' && L !== 'Advanced') { T.peekUntil = Date.now() + 6000; clearTimeout(peekT); peekT = setTimeout(() => C.render(), 6100); }
+    C.lastStep = stepKey;
+    el.className = 'sugg teach corner ' + T.ui + ' lv-' + L.toLowerCase();
+    if (T.ui === 'off') {
+      el.innerHTML = `<button class="ttab" onclick="MS.teacher.back()" aria-label="Show Mr. Paul" title="Show Mr. Paul">🧑‍🏫</button>`;
+      pulse(st); return;
+    }
+    if (T.ui === 'pill') {
+      const peek = Date.now() < T.peekUntil;
+      el.innerHTML = `${peek ? `<button class="tpeek" onclick="MS.teacher.open()"><b>Next:</b> ${esc(st.say)}</button>` : ''}
+        <div class="tpill"><button class="tpillgo ${pillLabel(st) === 'Next step' && L !== 'Advanced' ? 'glow' : ''}" onclick="MS.teacher.open()" aria-label="Open Mr. Paul">${FACE}<span><b class="tpn">Mr. Paul · </b><span class="tpl">${pillLabel(st)}</span></span></button><button class="tpillx" onclick="MS.teacher.off()" aria-label="Hide Mr. Paul" title="Hide Mr. Paul">✕</button></div>`;
+      pulse(st); return;
     }
     const pct = st.total ? Math.round((st.n || 0) / st.total * 100) : 0;
-    const ideas = ideasHtml();
-    function _unused(){ return `<div class="tideas"><div class="row" style="justify-content:space-between;gap:8px"><b style="color:var(--violet)">💡 Ideas for “${esc(S.song ? S.song.title : 'your song')}” ${C.loading ? '…' : ''}</b><div class="row" style="gap:6px"><button class="btn sm" onclick="MS.coach.more()">3 more</button><button class="btn sm" onclick="MS.coach.ask()">Ask for an idea</button><button class="btn sm ghost" onclick="MS.teacher.toggleIdeas()">Close</button></div></div>
-      <div class="chips row" style="gap:8px">${C.ideas.map((i, k) => `<button class="chip" onclick="MS.coach.apply(${k})">${esc(i.label)}<small>${esc(i.why || '')}</small></button>`).join('')}${C.wordChip()}</div><div class="tiny muted">Tap an idea to try it. Don't like it? Press Undo.</div></div>`; }
-    el.innerHTML = `${T.ideas && !C.min ? ideas : ''}<div class="in">
-      <button class="tface" onclick="MS.teacher.help()" aria-label="Help from Mr. Paul">${FACE}<span>Mr. Paul</span></button>
-      <div class="tmsg"><div class="tk">${esc(st.k)}${st.total ? `<span class="tbar"><i style="width:${pct}%"></i></span>` : ''}</div><div class="tsay">${esc(st.say)}</div>${st.why && L !== 'Advanced' && !C.min ? `<div class="twhy">${esc(st.why)}</div>` : ''}</div>
-      <div class="tact">${st.act ? `<button class="btn primary" onclick="MS.teacher.act()">${esc(st.act[0])}</button>` : ''}${st.target && !/Show me/.test(st.act ? st.act[0] : '') ? `<button class="btn" onclick="MS.teacher.show()">👆 Show me</button>` : ''}${st.skip ? `<button class="btn sm ghost" onclick="MS.teacher.skipStep()">Skip</button>` : ''}</div>
-      <div class="ttools"><button class="btn sm thelp" onclick="MS.teacher.help()">❓ Help</button><button class="btn sm tidea ${T.ideas ? 'open' : ''}" onclick="MS.teacher.toggleIdeas()">💡 Ideas</button><button class="btn sm" onclick="MS.undo()">Undo</button>${L === 'Advanced' ? `<button class="btn sm ghost" onclick="MS.teacher.guide=false;MS.coach.render()">Quiet</button>` : ''}<button class="btn sm ghost" onclick="MS.coach.toggle()" aria-label="${C.min ? 'Show Mr. Paul' : 'Make Mr. Paul smaller'}">${C.min ? 'Show' : 'Hide'}</button></div></div>`;
+    el.innerHTML = `<div class="tcard">${T.ideas ? ideasHtml() : ''}
+      <div class="thead">${FACE}<div class="tname"><b>Mr. Paul</b><span>your music teacher</span></div><button class="btn sm ghost tx" onclick="MS.teacher.tuck()" aria-label="Tuck Mr. Paul away">✕</button></div>
+      <div class="tmsg"><div class="tk">${esc(st.k)}${st.total ? `<span class="tbar"><i style="width:${pct}%"></i></span>` : ''}</div><div class="tsay">${esc(st.say)}</div>${st.why && L !== 'Advanced' ? `<div class="twhy">${esc(st.why)}</div>` : ''}</div>
+      <div class="tact">${quietAdv ? `<button class="btn primary" onclick="MS.teacher.help()">💬 Ask Mr. Paul</button><button class="btn" onclick="MS.teacher.guide=true;MS.coach.render()">Next move</button>` : `${st.act ? `<button class="btn primary" onclick="MS.teacher.act()">${esc(st.act[0])}</button>` : ''}${st.target && !/Show me/.test(st.act ? st.act[0] : '') ? `<button class="btn" onclick="MS.teacher.show()">👆 Show me</button>` : ''}${st.skip ? `<button class="btn sm ghost" onclick="MS.teacher.skipStep()">Skip</button>` : ''}`}</div>
+      <div class="ttools"><button class="btn sm thelp" onclick="MS.teacher.help()">❓ Help</button><button class="btn sm tidea ${T.ideas ? 'open' : ''}" onclick="MS.teacher.toggleIdeas()">💡 Ideas</button><button class="btn sm" onclick="MS.undo()">Undo</button>${L === 'Advanced' && T.guide ? `<button class="btn sm ghost" onclick="MS.teacher.guide=false;MS.coach.render()">Quiet</button>` : ''}</div>
+      ${T.hint ? `<div class="thint">Tap ✕ to tuck me away. Tap the gold <b>Mr. Paul</b> button any time for your next step.</div>` : ''}</div>`;
     pulse(st);
   };
   function ideasHtml() {
     return `<div class="tideas"><div class="row" style="justify-content:space-between;gap:8px"><b style="color:var(--violet)">💡 Ideas for “${esc(S.song ? S.song.title : 'your song')}” ${C.loading ? '…' : ''}</b><div class="row" style="gap:6px"><button class="btn sm" onclick="MS.coach.more()">3 more</button><button class="btn sm" onclick="MS.coach.ask()">Ask for an idea</button><button class="btn sm ghost" onclick="MS.teacher.toggleIdeas()">Close</button></div></div>
       <div class="chips row" style="gap:8px">${C.ideas.map((i, k) => `<button class="chip" onclick="MS.coach.apply(${k})">${esc(i.label)}<small>${esc(i.why || '')}</small></button>`).join('')}${C.wordChip()}</div><div class="tiny muted">Tap an idea to try it. Don't like it? Press Undo.</div></div>`;
   }
-  T.toggleIdeas = function () { T.ideas = !T.ideas; if (T.ideas) { C.min = false; if (!C.ideas.length) C.ideas = C.local().slice(0, 3); } C.render(); };
+  T.toggleIdeas = function () { T.ideas = !T.ideas; if (T.ideas) { T.ui = 'open'; if (!C.ideas.length) C.ideas = C.local().slice(0, 3); } C.render(); };
 
   // ---------- one place for help ----------
   const ROOM_TOPICS = { home: ['rooms', 'level', 'mysongs'], studio: ['studio', 'songmap', 'addnotes', 'lengths', 'chords', 'harmony', 'bass', 'drums'], vocal: ['vocal', 'lyrics', 'record', 'bgv'], control: ['control', 'layers', 'grid', 'board', 'master'], restyle: ['restyle'], save: ['save'], room: ['room'], words: ['rooms'] };
   T.help = function () {
     const st = T.next(), H = MS.HELP || {}, topics = (ROOM_TOPICS[S.screen] || ['rooms']).filter(k => H[k]);
-    MS.modal(`<div class="row" style="justify-content:space-between;align-items:center"><div class="row" style="gap:10px">${FACE}<div><h2 style="margin:0">Help from Mr. Paul</h2><div class="tiny muted">Ask me anything about music or this tool.</div></div></div><button class="btn sm ghost" onclick="MS.closeModal()">Close</button></div>
+    MS.modal(`<div class="row" style="justify-content:space-between;align-items:center"><div class="row" style="gap:10px">${FACE}<div><h2 style="margin:0">Help from Mr. Paul</h2><div class="tiny muted">Ask me anything about music or this tool.</div></div></div><div class="row" style="gap:6px">${T.ui === 'off' ? `<button class="btn sm" onclick="MS.closeModal();MS.teacher.open()">🧑‍🏫 Show Mr. Paul</button>` : ''}<button class="btn sm ghost" onclick="MS.closeModal()">Close</button></div></div>
       <div class="card col" style="margin-top:12px;border-color:var(--amber)"><div class="label">What to do right now</div><div style="font-size:16px;line-height:1.5">${esc(st.say)}</div>${st.why ? `<div class="small" style="color:var(--teal)">${esc(st.why)}</div>` : ''}
         <div class="row">${st.target ? `<button class="btn primary" onclick="MS.closeModal();MS.teacher.show()">👆 Show me where</button>` : ''}${st.act ? `<button class="btn" onclick="MS.closeModal();MS.teacher.act()">${esc(st.act[0])}</button>` : ''}</div></div>
       <div class="card col" style="margin-top:12px"><div class="label">Ask me a question</div><div class="tiny muted">For example: what's a chorus? why does my melody sound sad? how do I make it longer?</div>
@@ -220,5 +233,5 @@
   wrap('mp3', () => { T.dl[sid()] = true; setTimeout(() => C.render(), 0); });
   wrap('wav', () => { T.dl[sid()] = true; setTimeout(() => C.render(), 0); });
   // the old floating guided path is replaced by Mr. Paul's steps
-  MS.a.firstSong = function () { MS.a.newSong(); C.min = false; C.render(); setTimeout(() => T.show(), 400); };
+  MS.a.firstSong = function () { MS.a.newSong(); T.ui = 'open'; C.render(); setTimeout(() => T.show(), 400); };
 })();

@@ -209,7 +209,7 @@
       const has = !!S.song;
       return MS.banner() + `<div class="col" style="gap:14px">
       <div class="card col"><h1 style="font-size:32px">Make your own music</h1>
-      <p style="margin:0;font-size:16px;color:#ddd8cc;max-width:760px">Write it, arrange it and produce it with real instruments, then download your song. No singing needed. Mr. Paul, your music teacher, tells you what to do next at the bottom of every screen.</p>
+      <p style="margin:0;font-size:16px;color:#ddd8cc;max-width:760px">Write it, arrange it and produce it with real instruments, then download your song. No singing needed. Mr. Paul, your music teacher, tells you what to do next from the corner of every screen.</p>
       ${has ? `<button class="btn primary" style="align-self:flex-start" onclick="MS.go('studio')">▶ Continue “${esc(S.song.title)}”</button>` : ''}
       <div class="label" style="margin-top:6px">${has ? 'Or start something new' : 'What do you want to do?'}</div>
       <div class="doors">

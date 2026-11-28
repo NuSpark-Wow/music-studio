@@ -281,6 +281,30 @@ html.embedded .pinstaff{position:relative}
 .thelp{background:var(--teal)!important;border-color:var(--teal)!important;color:#06201d!important;font-weight:800!important;font-size:15px!important;min-height:42px!important;padding:0 16px!important}
 .header .thelp{min-height:38px!important}
 @media (max-width:900px){.sugg.teach .tsay{font-size:16px}}
+
+/* Mr. Paul in the corner */
+.sugg.teach.corner{left:auto;right:14px;bottom:14px;background:none!important;border:0!important;box-shadow:none!important;backdrop-filter:none;width:auto;max-width:min(440px,calc(100vw - 28px));display:flex;flex-direction:column;align-items:flex-end;gap:8px;pointer-events:none}
+.sugg.teach.corner>*{pointer-events:auto}
+.sugg.teach.corner.off{right:0}
+.tcard{background:#221c0c;border:2px solid var(--amber);border-radius:16px;box-shadow:0 10px 30px rgba(0,0,0,.5);padding:12px 14px;display:flex;flex-direction:column;gap:10px;width:min(440px,calc(100vw - 28px))}
+.tcard .thead{display:flex;align-items:center;gap:10px}.tcard .thead svg{width:42px;height:42px;flex:none}
+.tcard .tname{display:flex;flex-direction:column;line-height:1.2}.tcard .tname b{color:var(--amber);font:800 15px var(--H)}.tcard .tname span{color:var(--muted);font-size:12px}
+.tcard .tx{margin-left:auto;font-size:16px;min-width:40px}
+.tcard .tsay{font-size:16px!important;white-space:normal!important;overflow:visible!important}
+.tcard .tact,.tcard .ttools{display:flex;flex-wrap:wrap;gap:8px}
+.tcard .tideas{border:1px solid #4a3f6b;border-radius:12px;padding:10px;background:#1a1626}
+.tcard .tideas .chips{flex-wrap:wrap!important}
+.thint{font-size:12px;color:#e8d9b0;background:rgba(242,179,61,.12);border-radius:10px;padding:8px 10px}
+.tpill{display:flex;align-items:center;background:var(--amber);border-radius:999px;box-shadow:0 8px 22px rgba(0,0,0,.45)}
+.tpillgo{display:flex;align-items:center;gap:8px;background:none;border:0;cursor:pointer;padding:5px 6px 5px 6px;color:#1d1608;font:800 15px var(--H)}
+.tpillgo svg{width:36px;height:36px}
+.tpillgo.glow{animation:tglow 1.6s ease-in-out infinite;border-radius:999px}
+@keyframes tglow{0%,100%{box-shadow:0 0 0 0 rgba(242,179,61,.0)}50%{box-shadow:0 0 0 8px rgba(242,179,61,.35)}}
+.tpillx{background:rgba(0,0,0,.15);border:0;border-radius:50%;width:26px;height:26px;margin-right:8px;cursor:pointer;color:#1d1608;font-size:13px;font-weight:800}
+.tpeek{max-width:min(340px,calc(100vw - 28px));background:#fff8e6;color:#2a2010;border:2px solid var(--amber);border-radius:14px 14px 4px 14px;padding:10px 12px;font-size:14px;line-height:1.4;text-align:left;cursor:pointer;box-shadow:0 8px 20px rgba(0,0,0,.4);animation:tpop .25s ease-out}
+@keyframes tpop{from{transform:translateY(8px);opacity:0}to{transform:none;opacity:1}}
+.ttab{background:var(--amber);border:0;border-radius:12px 0 0 12px;padding:8px 8px 8px 10px;font-size:20px;cursor:pointer;box-shadow:0 6px 16px rgba(0,0,0,.4)}
+@media (max-width:640px){.tpn{display:none}.tpl{font-size:14px}.tpillgo svg{width:30px;height:30px}.tcard .tsay{font-size:15px!important}}
 </style>
 <style>
 /* Mr. Paul host at the bottom of the opening screen */

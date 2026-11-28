@@ -90,7 +90,7 @@
     const w = list[wordIdx % list.length];
     return `<button class="chip word" onclick="MS.word(${esc(JSON.stringify(w))})" title="${esc(MS.WORDS[w][0])}">📖 ${esc(w)}<small>Studio word · tap to learn</small></button>`;
   };
-  C.toggle = () => { C.min = !C.min; try { localStorage.setItem('musicstudio.sugg', C.min ? 'min' : ''); } catch (e) { } C.render(); };
+  C.toggle = () => { const T = MS.teacher; if (T && T.ui) { T.ui = T.ui === 'open' ? 'pill' : 'open'; } else { C.min = !C.min; } C.render(); };
   C.more = function () { wordIdx++; C.seen.push(...C.ideas.map(i => i.label)); if (C.seen.length > 40) C.seen = C.seen.slice(-40); C.ideas = []; C.fill(false); C.render(); };
   // ask the AI (only when a song exists and not too often); local ideas show meanwhile
   C.fill = async function (auto, ask) {
