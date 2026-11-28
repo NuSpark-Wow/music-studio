@@ -55,7 +55,7 @@
       if (!MS.vbuf) out.push({ label: 'Record your voice on ' + sec.name, why: 'Headphones help', action: { type: 'tip', text: 'Press the big Record button in step 5. You get one bar of clicks first.' } });
       out.push({ label: 'Let the music lead the intro', why: 'Voice comes in on the verse', action: { type: 'lead', section: (s.sections.find(x => /intro/i.test(x.name)) || {}).name, mode: 'music' } });
     }
-    if (!melHere) out.push({ label: 'Sing a few notes into ' + sec.name, why: 'Tap Sing, la la la, tap Stop', action: { type: 'tip', text: 'Press the round Sing button, sing slowly, then press Stop. You\'ll see what I heard first.' } });
+    if (!melHere) out.push({ label: 'Tap 4 notes into ' + sec.name, why: 'Piano keys or the white staff', action: { type: 'tip', text: 'Tap the piano keys (or the white staff) to add notes. Start on C and go up a few keys.' } });
     if (melHere && har && !(har.notes[sec.id] || []).some(n => n.p != null)) out.push({ label: 'Add a harmony a third below', why: 'Follows your melody, sounds warm', action: { type: 'harmony', kind: 'third_below' } });
     if (any(mel) && !(s.chords[sec.id] || []).some(Boolean)) out.push({ label: 'Suggest chords for every section', why: 'Built from your melody', action: { type: 'chords_auto' } });
     if (any(mel) && bass && !any(bass)) out.push({ label: 'Make a steady bass line', why: 'Root and fifth from your chords', action: { type: 'bass_line', style: 'pop' } });
@@ -66,7 +66,6 @@
     out.push({ label: 'Try it as R&B', why: 'Slow groove, electric piano', action: { type: 'style', name: 'R&B' } });
     out.push({ label: 'Try a classical arrangement', why: 'Solo violin, strings and harp', action: { type: 'style', name: 'Classical' } });
     if (S.screen !== 'control' && any(mel)) out.push({ label: 'Mix it in the Control Room', why: 'Layers, faders, master polish', action: { type: 'go', screen: 'control' } });
-    if (S.screen !== 'vocal') out.push({ label: 'Write lyrics in the Vocal Room', why: 'AI gives 3 options per section', action: { type: 'go', screen: 'vocal' } });
     return out.filter(i => !C.seen.includes(i.label));
   }
 

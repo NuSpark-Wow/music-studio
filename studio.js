@@ -17,7 +17,7 @@
         <label class="f adv">Time<select onchange="MS.a.ts(+this.value)"><option value="4" ${s.ts === 4 ? 'selected' : ''}>4/4</option><option value="3" ${s.ts === 3 ? 'selected' : ''}>3/4</option></select></label>
         <label class="f" style="min-width:180px">Tempo <b style="color:var(--ink)" id="tempoV">${s.tempo} BPM</b><input type="range" min="40" max="200" value="${s.tempo}" oninput="document.getElementById('tempoV').textContent=this.value+' BPM'" onchange="MS.change(x=>x.tempo=+this.value,{quiet:true})"></label>
         <button class="btn sm mod" onclick="MS.a.tapTempo()" title="Tap 4 times at the speed you want">Tap tempo</button>${MS.helpBtn('keytempo')}${MS.helpBtn('studio', '? How the studio works')}</div>
-        <div class="row"><button class="btn vocal" onclick="MS.go('vocal')">🎤 Vocal Room</button><button class="btn" style="border-color:#4a6a8a;background:#1a2433" onclick="MS.go('control')">🎚 Control Room</button><button class="btn mod" onclick="MS.a.scan()">📷 Scan sheet music</button><button class="btn mod" onclick="MS.go('restyle')">Restyle</button><button class="btn primary" onclick="MS.go('save')">Save and download</button></div>
+        <div class="row"><button class="btn" style="border-color:#4a6a8a;background:#1a2433" onclick="MS.go('control')">🎚 Control Room</button><button class="btn mod" onclick="MS.a.scan()">📷 Scan sheet music</button><button class="btn mod" onclick="MS.go('restyle')">Restyle</button><button class="btn primary" onclick="MS.go('save')">Save and download</button></div>
       </div>
       ${songMap()}
       <div class="split" style="margin-top:12px"><div class="main">
@@ -120,7 +120,7 @@
       <div class="row" style="gap:6px">${gh}${role}<button class="btn sm adv" aria-pressed="${!!p.solo}" style="${p.solo ? 'background:var(--amber);color:#1a1405' : ''}" onclick="event.stopPropagation();MS.a.solo('${p.id}')">Solo</button><button class="btn sm" aria-pressed="${!!p.mute}" style="${p.mute ? 'background:#5a2a20' : ''}" onclick="event.stopPropagation();MS.a.mute('${p.id}')">${p.mute ? 'Muted' : 'Mute'}</button>
       <button class="btn sm" onclick="event.stopPropagation();MS.a.playPart('${p.id}')" aria-label="Play this part">▶</button><button class="btn sm mod" onclick="event.stopPropagation();MS.a.clearPart('${p.id}')">Clear</button>${s.parts.length > 1 && !['melody'].includes(p.role) ? `<button class="btn sm adv" onclick="event.stopPropagation();MS.a.removePart('${p.id}')" aria-label="Remove part">✕</button>` : ''}</div></div>
       <div class="staffbox ${active ? 'desktop-only' : ''}" data-pid="${p.id}" onclick="event.stopPropagation();MS.a.staffTap(event,'${p.id}')"></div>
-      <div class="tiny muted">${full ? `${fmtBeats(full)} of ${len} beats filled` : (p.role === 'melody' ? 'Empty. Tap the staff, use the piano, or press Sing.' : p.role === 'harmony' ? 'Empty. Press “Suggest a harmony”, or sing or tap your own.' : 'Empty. Tap the staff or make a bass line.')}${full > len ? ' · extra notes past the end are not played' : ''}</div></div>`;
+      <div class="tiny muted">${full ? `${fmtBeats(full)} of ${len} beats filled` : (p.role === 'melody' ? 'Empty. Tap the piano keys or the staff to add notes.' : p.role === 'harmony' ? 'Empty. Press “Suggest a harmony”, or tap your own.' : 'Empty. Tap the staff or make a bass line.')}${full > len ? ' · extra notes past the end are not played' : ''}</div></div>`;
   }
   const fmtBeats = b => (Math.round(b * 4) / 4).toString();
   MS.a.activate = id => { if (S.part !== id) { S.part = id; S.sel = null; MS.render(); } };
@@ -368,10 +368,7 @@
     const n = selNote(), p = MS.part();
     const lens = lensFor().map(([d, name, g]) => `<button class="btn sm ${S.len === d ? 'on' : ''}" aria-pressed="${S.len === d}" onclick="MS.a.len(${d})" title="${name}">${MSS.icon(d)} ${name}</button>`).join('');
     return `<div class="card col"><div class="row" style="justify-content:space-between"><div class="label">Add notes to ${esc(p.name)}</div>${MS.helpBtn('addnotes')}</div>
-      <div class="row" style="justify-content:center"><button class="rec ${MS._recording ? 'live' : ''}" onclick="MS.a.sing()" aria-label="${MS._recording ? 'Stop singing' : 'Sing a phrase'}">${MS._recording ? 'Stop' : '🎤 Sing'}</button></div>
-      <div class="meter lvl" ${MS._recording ? '' : 'hidden'}><i></i></div>
-      <div class="tiny muted" style="text-align:center">Tap Sing, sing a few notes slowly (la, la, la), tap Stop. You'll see what I heard first.</div>
-      <div class="row" style="justify-content:center"><label class="row small mod"><input type="checkbox" ${MS._click ? 'checked' : ''} onchange="MS._click=this.checked"> Play a beat while I sing</label>${MS.helpBtn('sing', '? Singing tips')}</div>
+      <div class="small" style="color:#ddd8cc">Tap a piano key, or tap the white staff, to add a note. Higher on the staff = higher sound.</div>
       <div class="row" style="justify-content:space-between;margin-top:6px"><div class="label">Note length</div>${MS.helpBtn('lengths', '?')}</div><div class="row" style="gap:6px">${lens}</div>
       <div class="row" style="gap:6px"><button class="btn sm" onclick="MS.a.addRest()">Add a rest</button>${S.level !== 'Basic' ? `<label class="row tiny mod"><input type="checkbox" ${S.view.names !== false ? 'checked' : ''} onchange="MS.a.names(this.checked)"> Show note names</label>` : ''}</div>
       <div class="keys pk" aria-label="Piano keyboard"></div>
@@ -388,7 +385,7 @@
     const p = MS.part(), low = p.clef === 'bass' ? 36 : 60, whites = [], blacks = [];
     for (let m = low; m < low + 25; m++) { const pc = m % 12; if ([1, 3, 6, 8, 10].includes(pc)) blacks.push(m); else whites.push(m); }
     const w = 100 / whites.length;
-    el.innerHTML = whites.map(m => `<div class="w" data-m="${m}" role="button" aria-label="${MSS.name(m, 'C major')}${Math.floor(m / 12) - 1}">${m % 12 === 0 ? 'C' + (Math.floor(m / 12) - 1) : ''}</div>`).join('') +
+    el.innerHTML = whites.map(m => `<div class="w" data-m="${m}" role="button" aria-label="${MSS.name(m, 'C major')}${Math.floor(m / 12) - 1}">${S.level === 'Basic' ? MSS.name(m, 'C major') : (m % 12 === 0 ? 'C' + (Math.floor(m / 12) - 1) : '')}</div>`).join('') +
       blacks.map(m => { const i = whites.filter(x => x < m).length; return `<div class="b" data-m="${m}" role="button" aria-label="${MSS.name(m, S.song.key)}" style="left:calc(${i * w}% - ${w * 0.3}%);width:${w * 0.6}%"></div>`; }).join('');
     el.onpointerdown = e => { const k = e.target.closest('[data-m]'); if (!k) return; e.preventDefault(); k.classList.add('down'); setTimeout(() => k.classList.remove('down'), 180); MS.a.keyNote(+k.dataset.m); };
   }

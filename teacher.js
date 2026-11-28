@@ -30,9 +30,9 @@
     const list = [
       {
         id: 'melody', screen: 'studio', done: () => count(m, first.id) >= 4,
-        say: { Basic: `Press the big yellow Sing button and sing 4 slow notes: la… la… la… la. Then press Stop.`, Moderate: `Write the melody for ${first.name}. Sing it in, or tap the staff.`, Advanced: `Write the ${first.name} melody.` },
-        why: `No microphone? Tap the white staff 4 times instead. Higher on the staff = higher sound.`,
-        target: { sel: '.rec' }, before: () => { if (S.sec !== first.id) MS.a.pickSection(first.id); }
+        say: { Basic: `Let's write your tune. Tap 4 piano keys, one at a time. Try C, D, E, G.`, Moderate: `Write the melody for ${first.name}: tap the piano keys or the staff.`, Advanced: `Write the ${first.name} melody.` },
+        why: `Each tap adds a note to the staff. Higher on the staff = higher sound. Tap a note on the staff to move it.`,
+        target: { sel: '.keys.pk' }, before: () => { if (S.sec !== first.id) MS.a.pickSection(first.id); }
       },
       {
         id: 'fill', screen: 'studio', done: () => beats(m, first.id) >= need,
@@ -55,7 +55,7 @@
       },
       {
         id: 'chorus', screen: 'studio', done: () => chorus && count(m, chorus.id) >= 4,
-        say: { Basic: `Now the chorus: the catchy part that repeats. Tap the Chorus block, then sing or tap 4 notes.`, Moderate: `Write the chorus. Make it catchier than the verse: a little higher or a little longer.`, Advanced: `Write the chorus.` },
+        say: { Basic: `Now the chorus: the catchy part that repeats. Tap the Chorus block, then tap 4 piano keys.`, Moderate: `Write the chorus. Make it catchier than the verse: a little higher or a little longer.`, Advanced: `Write the chorus.` },
         why: `Tip: start the chorus a few notes higher than the verse. It lifts the song.`,
         target: { text: 'Chorus' },
         act: chorus ? ['Take me to the Chorus', () => { MS.go('studio'); MS.a.pickSection(chorus.id); }] : ['Add a chorus', () => { MS.change(x => { const id = MS.id('s'); x.sections.push({ id, name: 'Chorus', bars: 4 }); S.sec = id; }); }]
@@ -83,12 +83,6 @@
       }
     );
     list.push(
-      {
-        id: 'words', screen: 'vocal', skip: true, done: () => skipped('words') || Object.values(s.vocals.lyrics || {}).some(Boolean),
-        say: { Basic: `Want words? In the Vocal Room, tell me what the song is about and pick lyrics. No words? Press Skip.`, Moderate: `Lyrics: tell me the theme in the Vocal Room and pick from 3 options per section. Or skip for an instrumental.`, Advanced: `Lyrics and vocals, or skip.` },
-        why: `You can always come back and add words later.`,
-        target: S.screen === 'vocal' ? { text: 'Stuck' } : null, act: ['Take me to the Vocal Room', () => MS.go('vocal')]
-      },
       {
         id: 'layer', screen: 'control', skip: true, done: () => skipped('layer') || (s.layers || []).length > 0,
         say: { Basic: `Make it sound full. In the Control Room, press + Add a layer and pick String pad.`, Moderate: `Add a background layer in the Control Room: a pad or a strum under your chords.`, Advanced: `Layers, build grid and mix.` },
@@ -174,7 +168,7 @@
         <button class="tface" onclick="MS.teacher.help()" aria-label="Help from Mr. Paul">${FACE}<span>Mr. Paul</span></button>
         <div class="tmsg"><div class="tk">ON CALL</div><div class="tsay">Need a hand? Ask me anything, or let me suggest your next move.</div></div>
         <div class="tact"><button class="btn primary" onclick="MS.teacher.help()">💬 Ask Mr. Paul</button><button class="btn" onclick="MS.teacher.guide=true;MS.coach.render()">Next move</button></div>
-        <div class="ttools"><button class="btn sm tidea ${T.ideas ? 'open' : ''}" onclick="MS.teacher.toggleIdeas()">💡 Ideas</button><button class="btn sm" onclick="MS.undo()">Undo</button><button class="btn sm ghost" onclick="MS.coach.toggle()">${C.min ? 'Show' : 'Hide'}</button></div></div>`;
+        <div class="ttools"><button class="btn sm thelp" onclick="MS.teacher.help()">❓ Help</button><button class="btn sm tidea ${T.ideas ? 'open' : ''}" onclick="MS.teacher.toggleIdeas()">💡 Ideas</button><button class="btn sm" onclick="MS.undo()">Undo</button><button class="btn sm ghost" onclick="MS.coach.toggle()">${C.min ? 'Show' : 'Hide'}</button></div></div>`;
       return;
     }
     const pct = st.total ? Math.round((st.n || 0) / st.total * 100) : 0;
@@ -195,7 +189,7 @@
   T.toggleIdeas = function () { T.ideas = !T.ideas; if (T.ideas) { C.min = false; if (!C.ideas.length) C.ideas = C.local().slice(0, 3); } C.render(); };
 
   // ---------- one place for help ----------
-  const ROOM_TOPICS = { home: ['rooms', 'level', 'mysongs'], studio: ['studio', 'songmap', 'addnotes', 'sing', 'lengths', 'chords', 'harmony', 'bass', 'drums'], vocal: ['vocal', 'lyrics', 'record', 'bgv'], control: ['control', 'layers', 'grid', 'board', 'master'], restyle: ['restyle'], save: ['save'], room: ['room'], words: ['rooms'] };
+  const ROOM_TOPICS = { home: ['rooms', 'level', 'mysongs'], studio: ['studio', 'songmap', 'addnotes', 'lengths', 'chords', 'harmony', 'bass', 'drums'], vocal: ['vocal', 'lyrics', 'record', 'bgv'], control: ['control', 'layers', 'grid', 'board', 'master'], restyle: ['restyle'], save: ['save'], room: ['room'], words: ['rooms'] };
   T.help = function () {
     const st = T.next(), H = MS.HELP || {}, topics = (ROOM_TOPICS[S.screen] || ['rooms']).filter(k => H[k]);
     MS.modal(`<div class="row" style="justify-content:space-between;align-items:center"><div class="row" style="gap:10px">${FACE}<div><h2 style="margin:0">Help from Mr. Paul</h2><div class="tiny muted">Ask me anything about music or this tool.</div></div></div><button class="btn sm ghost" onclick="MS.closeModal()">Close</button></div>

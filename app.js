@@ -152,7 +152,7 @@
   MS.header = function () {
     const lv = ['Basic', 'Moderate', 'Advanced'].map(l => `<button type="button" class="pill amber ${l === S.level ? 'on' : ''}" aria-pressed="${l === S.level}" onclick="MS.a.level('${l}')">${l}</button>`).join('');
     const pp = ['White', 'Dark'].map(p => `<button type="button" class="pill ${p.toLowerCase() === S.paper ? 'on' : ''}" style="${p === 'White' && S.paper === 'white' ? 'background:#fbfaf6;color:#111;border-color:#fbfaf6' : ''}" aria-pressed="${p.toLowerCase() === S.paper}" onclick="MS.a.paper('${p.toLowerCase()}')">${p}</button>`).join('');
-    return `<div class="header"><div class="row" style="gap:10px"><button type="button" class="brand" onclick="MS.go('home')"><b>The Music Studio</b><span>Sing it. See it. Hear it.</span></button>${S.song && S.screen !== 'home' ? `<button class="btn sm ghost" onclick="MS.go('home')" title="Your songs are saved on this device. Tap for My Songs."><span id="savedNote" style="color:var(--teal)">Saved ✓</span>&nbsp;· My Songs</button>` : ''}</div>
+    return `<div class="header"><div class="row" style="gap:10px"><button type="button" class="brand" onclick="MS.go('home')"><b>The Music Studio</b><span>Write it. Arrange it. Hear it.</span></button>${S.song && S.screen !== 'home' ? `<button class="btn sm ghost" onclick="MS.go('home')" title="Your songs are saved on this device. Tap for My Songs."><span id="savedNote" style="color:var(--teal)">Saved ✓</span>&nbsp;· My Songs</button>` : ''}</div>
     ${['studio', 'room', 'restyle', 'vocal'].includes(S.screen) ? `<div class="row"><span class="level">Paper</span>${pp}${MS.helpBtn('paper', '?')}</div>` : ''}
     <div class="row" role="group" aria-label="Music knowledge level"><span class="level">Level</span>${lv}${MS.helpBtn('level', '?')}</div>
     <div class="row" style="gap:6px"><button class="btn sm" onclick="MS.go('words')">📖 Studio Talk</button><button class="btn sm thelp" onclick="MS.teacher.help()">❓ Help</button>${S.screen !== 'home' && !(S.screen === 'room' && S.arg) ? `<button class="btn sm" onclick="MS.go('home')">🏠 Back to Start</button>` : ''}</div></div>`;
@@ -160,7 +160,7 @@
   MS.a.level = l => { S.level = l; MS.save(); MS.render(); };
   MS.a.paper = p => { S.paper = p; MS.save(); MS.render(); };
   MS.footer = function (extra) {
-    return `<div class="foot">${extra ? extra + '<br>' : ''}Small print: Singing to notes works best with one voice, sung slowly, in a quiet room. Instrument and background-singer sounds are built in and sound good, not studio-grade. AI suggestions and lyric ideas can be wrong; you have the final say. Music you didn't write is for personal use only. Music symbols: Bravura font (SIL Open Font License). MP3 encoding: LAME (LGPL).</div>`;
+    return `<div class="foot">${extra ? extra + '<br>' : ''}Small print: Instrument sounds are built in and sound good, not studio-grade. AI suggestions and lyric ideas can be wrong; you have the final say. Music you didn't write is for personal use only. Music symbols: Bravura font (SIL Open Font License). MP3 encoding: LAME (LGPL).</div>`;
   };
   MS.banner = function () {
     // generic instruments: piano keys, guitar, violin, drum, microphone, notes
@@ -193,7 +193,7 @@
       const has = !!S.song;
       return MS.banner() + `<div class="col" style="gap:14px">
       <div class="card col"><h1 style="font-size:32px">Make your own music</h1>
-      <p style="margin:0;font-size:16px;color:#ddd8cc;max-width:760px">Write it, sing it, arrange it and produce it with real instruments, then download your song. Mr. Paul, your music teacher, tells you what to do next at the bottom of every screen.</p>
+      <p style="margin:0;font-size:16px;color:#ddd8cc;max-width:760px">Write it, arrange it and produce it with real instruments, then download your song. No singing needed. Mr. Paul, your music teacher, tells you what to do next at the bottom of every screen.</p>
       ${has ? `<button class="btn primary" style="align-self:flex-start" onclick="MS.go('studio')">▶ Continue “${esc(S.song.title)}”</button>` : ''}
       <div class="label" style="margin-top:6px">${has ? 'Or start something new' : 'What do you want to do?'}</div>
       <div class="doors">
@@ -208,7 +208,7 @@
       ${MS.roomsHtml()}
       <div class="card col"><div class="label">Start from a classic</div><div class="small muted">Old songs anyone can use. Change them, restyle them, make them yours.</div>
       <div class="row">${Object.keys(MS.CLASSICS).map(k => `<button class="btn" onclick="MS.a.classic(${esc(JSON.stringify(k))})">${esc(k)}</button>`).join('')}</div></div>
-      <div class="card col"><div class="label">Personal use (for scanning, restyling or classics)</div><label class="row" style="align-items:flex-start;gap:10px;font-size:14px;cursor:pointer"><input type="checkbox" ${S.agreed ? 'checked' : ''} onchange="MS.a.agree(this.checked)"><span>If I sing or write out music I didn't write (from a fakebook, from memory or from any other source), it's for my own enjoyment. I won't post it on public networks or sell it.</span></label><div class="tiny muted">Needed before you restyle or enter someone else's song.</div></div>
+      <div class="card col"><div class="label">Personal use (for scanning, restyling or classics)</div><label class="row" style="align-items:flex-start;gap:10px;font-size:14px;cursor:pointer"><input type="checkbox" ${S.agreed ? 'checked' : ''} onchange="MS.a.agree(this.checked)"><span>If I write out or play music I didn't write (from a fakebook, from memory or from any other source), it's for my own enjoyment. I won't post it on public networks or sell it.</span></label><div class="tiny muted">Needed before you restyle or enter someone else's song.</div></div>
       </div>` + MS.footer();
     }
   };
@@ -357,7 +357,7 @@
         <div class="tiny muted">A saved version goes into My Songs next to your original, so you can move either one to any room.</div>`
         : `<div class="row"><button class="btn primary" onclick="MS.a.playSong()">▶ Play the original</button><button class="btn" onclick="MSA.stop()">■</button></div><div class="tiny muted">Tap any flavor to hear it.</div>`}</div>
       ${fam.length > 1 ? `<div class="card col"><div class="label">Versions of this song</div>${fam.map(e => `<div class="row" style="justify-content:space-between;gap:6px"><div style="min-width:0"><b class="small">${esc(e.song.id === root ? 'Original' : (e.song.style || e.song.title))}</b>${e.song.id === s.id ? ' <span class="tiny" style="color:var(--amber)">open now</span>' : ''}</div>${e.song.id === s.id ? '' : `<button class="btn sm" onclick="MS.a.openVersion('${e.song.id}')">Open</button>`}</div>`).join('')}<div class="tiny muted">Open any version to keep working on it in the studio, Vocal Room or Control Room.</div></div>` : ''}
-      <div class="card col"><div class="label">Someone else's song?</div><div class="row"><button class="btn sm" onclick="MS.a.scan()">📷 Scan sheet music</button></div><div class="small" style="color:#ddd8cc">Scan a page, or type or sing the melody into the studio, then restyle it here. A modern 1812 Overture or an R&amp;B version of a favorite song is fine for your own enjoyment.</div>
+      <div class="card col"><div class="label">Someone else's song?</div><div class="row"><button class="btn sm" onclick="MS.a.scan()">📷 Scan sheet music</button></div><div class="small" style="color:#ddd8cc">Scan a page, or tap the melody into the studio, then restyle it here. A modern 1812 Overture or an R&amp;B version of a favorite song is fine for your own enjoyment.</div>
       <label class="row small" style="align-items:flex-start;gap:10px"><input type="checkbox" ${s.source === 'other' ? 'checked' : ''} onchange="MS.a.source(this.checked)"><span>This song was written by someone else.</span></label>
       ${s.source === 'other' && !S.agreed ? `<label class="row small" style="align-items:flex-start;gap:10px"><input type="checkbox" onchange="MS.a.agree(this.checked);MS.render()"><span>It's for my own enjoyment. I won't post it publicly or sell it.</span></label>` : ''}
       ${s.source === 'other' ? '<div class="tiny muted">Downloads will be marked “Personal use only”.</div>' : ''}</div></div></div>` + MS.footer();
