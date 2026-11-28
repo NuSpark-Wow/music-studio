@@ -34,7 +34,41 @@
     return `<div class="row small muted" style="margin-bottom:10px"><a href="#" onclick="MS.go('room');return false">The Music Room</a><span>›</span><span>${esc(l.group)}</span><span>›</span><span style="color:var(--ink)">${esc(l.title)}</span><span style="margin-left:auto">${done(id) ? '<span class="done">✓ Done</span>' : 'about ' + l.mins + ' minutes'}</span></div>
       <div class="split"><div class="main">${inner}</div><div class="side">${side || ''}<div class="card col"><div class="label">Next</div>${next ? `<button class="btn" onclick="MS.go('room','${next.id}')">${esc(next.title)} ›</button>` : '<div class="small">That was the last lesson. The studio is all yours.</div>'}<button class="btn ghost" onclick="MS.go('room')">All lessons</button></div></div></div>` + MS.footer();
   }
-  function lessonHtml(id) { const x = LESSONS[id]; return x ? shell(id, x.html(), x.side ? x.side() : '') : ''; }
+  // going further by level: Moderate gets the music words, Advanced gets the arranger's and producer's view
+  const MORE = {
+    names: ['<b>Ledger lines:</b> notes above or below the staff get their own short lines. Middle C sits on one below the treble staff. From one C up to the next C is an <b>octave</b>: 8 notes, same name, higher sound.',
+      'The <b>bass clef</b> (the backwards C with two dots) is for low instruments: bass, tuba, cello and the piano\'s left hand. Its lines from the bottom are <b>G B D F A</b> ("Good Boys Do Fine Always") and its spaces are <b>A C E G</b> ("All Cows Eat Grass"). A <b>sharp ♯</b> raises a note one key; a <b>flat ♭</b> lowers it one key.'],
+    highlow: ['The distance between two notes is an <b>interval</b>. Next-door notes are a <b>step</b>; jumping over notes is a <b>leap</b>. Melodies people remember mix both.',
+      'Name intervals by counting letters: C up to E is a <b>third</b>, C to G a <b>fifth</b>, C to C an <b>octave</b>. Thirds sound sweet and fifths sound strong and open, which is why harmonies use thirds and power chords use fifths.'],
+    lengths: ['A <b>dot</b> adds half the note\'s length: a dotted half lasts 3 beats. <b>Rests</b> are silent beats and count just like notes.',
+      'A <b>tie</b> joins two notes into one longer sound across a bar line. <b>Syncopation</b> puts notes on the "and" between beats: the push you hear in funk, R&B and Latin music.'],
+    tempo: ['Tempo is measured in <b>BPM</b> (beats per minute). Ballads sit around 60 to 80, pop around 100 to 120, dance music around 120 to 130.',
+      'Producers pick tempo for feel. A <b>half-time</b> drum pattern feels slower without changing the BPM. The <b>time signature</b> sets beats per bar: 4/4 for most pop, 3/4 for a waltz, 6/8 for a rolling swing.'],
+    dynamics: ['Musicians write loudness with Italian letters: <b>p</b> (soft), <b>mf</b> (medium), <b>f</b> (loud). <b>Crescendo</b> means get louder; <b>diminuendo</b> means get softer.',
+      'In production, loud-and-soft is arranging: drop instruments out for a quiet verse so the chorus hits harder. <b>Compression</b> (Punch in the Control Room) evens out loud and soft so every part stays clear.'],
+    melody: ['Good melodies have a <b>shape</b>: they rise to a high point and come home. Repeat a short idea (a <b>motif</b>) and change it a little the second time.',
+      'Write the chorus melody higher than the verse, and land the ends of phrases on <b>chord tones</b> (the 1st, 3rd or 5th note of the chord). Leave rests: space lets a melody breathe and gives lyrics room.'],
+    chords: ['A <b>chord</b> is three or more notes played together. The most used progression in pop is <b>I–V–vi–IV</b> (in C major: C, G, Am, F).',
+      'Major chords sound bright; minor chords sound sad or serious. <b>Tension and release</b> drives a song: the V chord (G in C major) pulls back home to I (C). Swap a chord for its <b>relative minor</b> (C → Am) to change the mood.'],
+    harmony: ['A <b>harmony</b> is a second melody that moves with the first. A <b>third below</b> the melody is the classic, warm choice.',
+      'Arrangers mix <b>parallel motion</b> (moves with the melody) and <b>contrary motion</b> (moves the opposite way) to keep parts interesting. Keep harmony parts at least a third apart so they don\'t blur.'],
+    structure: ['Most songs go <b>Intro, Verse, Chorus, Verse, Chorus, Bridge, Chorus, Outro</b>. The chorus repeats; the verses tell the story.',
+      'Arrange for energy: every section should add or take away something. A <b>pre-chorus</b> builds tension, a <b>bridge</b> brings a new chord or melody, and the last chorus is usually the biggest.'],
+    arrange: ['A <b>section</b> (all the violins) sounds big and smooth; a <b>soloist</b> sounds personal. <b>Echo</b> repeats the sound; <b>reverb</b> makes the room sound bigger.',
+      'Producers think in <b>frequency</b>: bass and kick drum share the low end, voice and lead live in the middle, cymbals and strings sparkle on top. <b>Pan</b> parts left and right and <b>EQ</b> out what overlaps, so every part has its own space.']
+  };
+  function levelBox(id) {
+    const m = MORE[id]; if (!m || S.level === 'Basic') return '';
+    return `<div class="card col" style="border-color:${S.level === 'Advanced' ? 'var(--violet)' : 'var(--teal)'}"><div class="label" style="color:${S.level === 'Advanced' ? 'var(--violet)' : 'var(--teal)'}">${S.level === 'Advanced' ? '🎛 Arranger & producer corner' : '📖 Going further'}</div>
+      <p style="margin:0;font-size:15.5px;line-height:1.6;color:#ddd8cc">${m[0]}</p>${S.level === 'Advanced' ? `<p style="margin:0;font-size:15.5px;line-height:1.6;color:#ddd8cc">${m[1]}</p>` : ''}</div>`;
+  }
+  function controls() {
+    return `<div class="row lessonctrl" style="gap:6px;margin-bottom:10px"><button class="btn sm" onclick="MS.a.roomStop()">⏹ Stop</button><button class="btn sm" onclick="MS.a.roomPause()">${MS._roomPaused ? '▶ Resume' : '⏸ Pause'}</button><button class="btn sm" onclick="MS.a.roomRestart()">🔄 Restart</button><button class="btn sm" onclick="MS.a.roomStop();MS.go('room')">✖ Close</button><button class="btn sm" onclick="MS.a.roomStop();MS.go('home')">🏠 Back to Start</button></div>`;
+  }
+  MS.a.roomStop = function () { try { A().stop(); } catch (e) { } if (MS._roomPaused) { MS._roomPaused = false; try { A().ctx(); } catch (e) { } } };
+  MS.a.roomPause = function () { try { const c = A().ctx(); if (!MS._roomPaused) { c.suspend(); MS._roomPaused = true; } else { c.resume(); MS._roomPaused = false; } } catch (e) { } rer(); };
+  MS.a.roomRestart = function () { MS.a.roomStop(); Object.keys(L).forEach(k => delete L[k]); rer(); MS.toast('Lesson restarted'); };
+  function lessonHtml(id) { const x = LESSONS[id]; return x ? controls() + shell(id, x.html() + levelBox(id), x.side ? x.side() : '') : ''; }
   const rer = () => MS.render();
   const staff = (notes, o) => MSS.render(Object.assign({ notes, clef: 'treble', key: 'C major', ts: 4, bars: 1, width: 640, paper: S.paper, color: S.paper === 'dark' ? '#f2ede0' : '#141414' }, o || {})).svg;
   const card = (t, body) => `<div class="card col"><h1 style="font-size:26px">${t}</h1>${body}</div>`;
@@ -63,15 +97,23 @@
 
   const LESSONS = {};
   // 1 — note names quiz
-  const QN = [64, 65, 67, 69, 71, 72, 74, 76, 77, 62, 60];
+  const QPOOL = {
+    Basic: [64, 65, 67, 69, 71, 72, 74, 76, 77].map(p => [p, 'treble']),
+    Moderate: [60, 62, 64, 65, 67, 69, 71, 72, 74, 76, 77, 79, 81].map(p => [p, 'treble']),
+    Advanced: [60, 62, 64, 65, 67, 69, 71, 72, 74, 76, 77, 79, 81].map(p => [p, 'treble']).concat([43, 45, 47, 48, 50, 52, 53, 55, 57].map(p => [p, 'bass']))
+  };
+  const pickQ = old => { const pool = QPOOL[S.level] || QPOOL.Basic; let q; do { q = pool[Math.floor(Math.random() * pool.length)]; } while (pool.length > 1 && old && q[0] === old[0] && q[1] === old[1]); return q; };
   LESSONS.names = {
     html() {
-      L.names = L.names || { q: QN[Math.floor(Math.random() * QN.length)], score: 0, msg: '' };
-      const st = L.names;
+      L.names = L.names || { qq: pickQ(), score: 0, msg: '', hint: false };
+      const st = L.names; if (!st.qq || !(QPOOL[S.level] || []).some(x => x[0] === st.qq[0] && x[1] === st.qq[1])) st.qq = pickQ();
+      st.q = st.qq[0];
       return card('Notes on the staff', p('Music is written on five lines called a <b>staff</b>. Each line and each space is a note. Notes are named with letters: <b>A B C D E F G</b>, then they start over.') +
         p('In the treble clef (the curly sign), the lines from the bottom are <b>E G B D F</b> (“Every Good Boy Does Fine”) and the spaces spell <b>F A C E</b>. Middle C sits on its own little line below the staff.') +
-        staff([{ p: 64, d: 1 }, { p: 67, d: 1 }, { p: 71, d: 1 }, { p: 74, d: 1 }], { names: true }) +
-        `<div class="label" style="margin-top:6px">Your turn: what note is this?</div>${staff([{ p: st.q, d: 4 }], { width: 320 })}
+        `<div class="label" style="margin-top:6px">The 5 lines: E G B D F</div>` + staff([{ p: 64, d: 1 }, { p: 67, d: 1 }, { p: 71, d: 1 }, { p: 74, d: 1 }, { p: 77, d: 1 }, { p: null, d: 3 }], { names: true, bars: 2 }) +
+        `<div class="label" style="margin-top:6px">The 4 spaces: F A C E</div>` + staff([{ p: 65, d: 1 }, { p: 69, d: 1 }, { p: 72, d: 1 }, { p: 76, d: 1 }], { names: true }) +
+        `<div class="label" style="margin-top:6px">Your turn: what note is this?${st.qq[1] === 'bass' ? ' <span style="color:var(--violet)">(bass clef)</span>' : ''}</div>${staff([{ p: st.q, d: 4 }], { width: 320, clef: st.qq[1] })}
+        ${S.level === 'Basic' ? `<div class="tiny muted">${st.hint ? (st.qq[1] === 'treble' ? 'Hint: count up from the bottom line E. Lines go E G B D F, spaces go F A C E.' : '') : `<button class="linkish" onclick="MS.a.rHint()">Need a hint?</button>`}</div>` : ''}
         <div class="row">${'CDEFGAB'.split('').map(c => `<button class="btn" style="min-width:52px;font-size:18px" onclick="MS.a.rNames('${c}')">${c}</button>`).join('')}<button class="btn sm ghost" onclick="MSA.preview(${st.q})">▶ Hear it</button></div>
         <div class="small">${st.msg} Score: <b>${st.score}</b> of 5 in a row</div>`);
     }
@@ -81,7 +123,9 @@
     A().preview(st.q);
     if (c === right) { st.score++; st.msg = '✓ Yes, that\'s ' + right + '!'; if (st.score >= 5) { markDone('names'); st.score = 0; st.msg = '🎉 Five in a row!'; } }
     else { st.score = 0; st.msg = 'Not quite: that was ' + right + '.'; }
-    let q; do { q = QN[Math.floor(Math.random() * QN.length)]; } while (q === st.q); st.q = q; rer();
+    st.qq = pickQ(st.qq); st.hint = false; rer();
+  };
+  MS.a.rHint = function () { if (L.names) { L.names.hint = true; rer(); }
   };
   // 1b — high and low
   LESSONS.highlow = {

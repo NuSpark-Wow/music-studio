@@ -22,7 +22,7 @@
       ${songMap()}
       <div class="split" style="margin-top:12px"><div class="main">
         ${s.parts.map(x => partCard(x) + (x.id === S.part ? `<div class="mobile-only pinwrap"><div class="pinstaff"><div class="tiny" style="color:var(--amber);margin-bottom:4px">${esc(x.name)} · ${esc(sec.name)} <span class="muted">(stays here while you pick notes)</span></div><div class="staffbox" data-pid="${x.id}" onclick="event.stopPropagation();MS.a.staffTap(event,'${x.id}')"></div><div class="pinbar"></div></div>${notesCard()}</div>` : '')).join('')}
-        <div class="row"><button class="btn sm" onclick="MS.a.addPart()">+ Add a part</button>${s.parts.some(x => x.role !== 'melody') ? `<label class="row small"><input type="checkbox" ${ghostGlobal() ? 'checked' : ''} onchange="MS.a.ghostAll(this.checked)"> Show the melody faintly behind the other parts</label>${MS.helpBtn('ghost', '?')}` : ''}</div>
+        <div class="row"><button class="btn sm" onclick="MS.a.addPart()">+ Add a part</button>${s.parts.some(x => x.role !== 'melody') ? `<label class="row small mod"><input type="checkbox" ${ghostGlobal() ? 'checked' : ''} onchange="MS.a.ghostAll(this.checked)"> Show the melody faintly behind the other parts</label>${MS.helpBtn('ghost', '?')}` : ''}</div>
         ${chordsCard()}
         ${transport()}
         <div class="card adv">${mixer()}</div>
@@ -112,7 +112,8 @@
     const I = A().INST[p.inst] || {};
     const role = p.role === 'harmony' ? `<button class="btn sm" onclick="event.stopPropagation();MS.a.harmony('${p.id}')">Suggest a harmony</button>${MS.helpBtn('harmony', '?')}` : p.role === 'bass' ? `<button class="btn sm mod" onclick="event.stopPropagation();MS.a.bassLine()">Make a bass line</button>${MS.helpBtn('bass', '?')}` : '';
     const gh = p.role !== 'melody' && ghostGlobal() ? `<button class="btn sm ghost" aria-pressed="${p.ghost !== false}" onclick="event.stopPropagation();MS.a.ghostPart('${p.id}')" title="Show the melody faintly on this staff">${p.ghost !== false ? 'Melody: shown' : 'Melody: hidden'}</button>` : '';
-    return `<div class="card part tight ${active ? 'active' : ''}" onclick="MS.a.activate('${p.id}')">
+    const bh = p.role !== 'melody' && !Object.values(p.notes).some(l => l.some(n => n.p != null)) ? 'bhide' : '';
+    return `<div class="card part tight ${active ? 'active' : ''} ${bh}" onclick="MS.a.activate('${p.id}')">
       <div class="row" style="justify-content:space-between"><div class="row" style="gap:8px"><span class="dot" style="background:${p.color}"></span><b style="font-family:var(--H);font-size:17px">${esc(p.name)}</b>
       <button class="btn sm ghost" onclick="event.stopPropagation();MS.a.pickInst('${p.id}')" title="Change instrument">${esc(p.inst)}${I.ens ? (p.ens === 'section' ? ' · section' : ' · soloist') : ''} ▾</button>
       ${active ? '<span class="tiny" style="color:var(--amber)">Adding notes here</span>' : '<span class="tiny muted">Tap to add notes here</span>'}</div>
@@ -542,9 +543,9 @@
       <label class="f">Beat<select onchange="MS.change(x=>x.drums.style=this.value)">${Object.keys(A().DRUMS).map(k => `<option ${d.style === k ? 'selected' : ''}>${k}</option>`).join('')}</select></label>
       ${d.style !== 'None' ? `<label class="f">Drum volume<input type="range" min="0" max="1" step="0.05" value="${d.vol}" onchange="MS.change(x=>x.drums.vol=+this.value,{quiet:true})"></label>
       <label class="row small mod"><input type="checkbox" ${d.skip[S.sec] ? 'checked' : ''} onchange="MS.change(x=>{x.drums.skip[MS.S.sec]=this.checked})"> No drums in ${esc(MS.sec().name)}</label>` : '<div class="tiny muted">Pick a beat to add drums under your song.</div>'}
-      <div class="row" style="justify-content:space-between;margin-top:6px"><div class="label">Extra percussion</div>${MS.helpBtn('perc', '?')}</div>
+      <div class="mod col" style="gap:8px"><div class="row" style="justify-content:space-between;margin-top:6px"><div class="label">Extra percussion</div>${MS.helpBtn('perc', '?')}</div>
       <div class="seg">${Object.entries(A().PERC).map(([k, v]) => `<button type="button" class="pill ${pc.on[k] ? 'on' : ''}" aria-pressed="${!!pc.on[k]}" onclick="MS.a.perc('${k}')">${esc(v.name)}</button>`).join('')}</div>
-      ${any ? `<label class="f">Percussion volume<input type="range" min="0" max="1" step="0.05" value="${pc.vol}" onchange="MS.change(x=>x.perc.vol=+this.value,{quiet:true})"></label><div class="tiny muted">They play all the way through. Pick sections on the build grid in the 🎚 Control Room.</div>` : '<div class="tiny muted">Tap one to hear it and add it. Works with or without a drum beat.</div>'}</div>`;
+      ${any ? `<label class="f">Percussion volume<input type="range" min="0" max="1" step="0.05" value="${pc.vol}" onchange="MS.change(x=>x.perc.vol=+this.value,{quiet:true})"></label><div class="tiny muted">They play all the way through. Pick sections on the build grid in the 🎚 Control Room.</div>` : '<div class="tiny muted">Tap one to hear it and add it. Works with or without a drum beat.</div>'}</div></div>`;
   }
   MS.a.perc = function (k) { const was = !!S.song.perc.on[k]; MS.change(s => { s.perc.on[k] = !was; }); if (!was) A().hearPerc(k); if (MS._pick && document.querySelector('.modal')) renderPicker(); };
   function mixer() {

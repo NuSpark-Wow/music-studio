@@ -153,9 +153,9 @@
     const lv = ['Basic', 'Moderate', 'Advanced'].map(l => `<button type="button" class="pill amber ${l === S.level ? 'on' : ''}" aria-pressed="${l === S.level}" onclick="MS.a.level('${l}')">${l}</button>`).join('');
     const pp = ['White', 'Dark'].map(p => `<button type="button" class="pill ${p.toLowerCase() === S.paper ? 'on' : ''}" style="${p === 'White' && S.paper === 'white' ? 'background:#fbfaf6;color:#111;border-color:#fbfaf6' : ''}" aria-pressed="${p.toLowerCase() === S.paper}" onclick="MS.a.paper('${p.toLowerCase()}')">${p}</button>`).join('');
     return `<div class="header"><div class="row" style="gap:10px"><button type="button" class="brand" onclick="MS.go('home')"><b>The Music Studio</b><span>Sing it. See it. Hear it.</span></button>${S.song && S.screen !== 'home' ? `<button class="btn sm ghost" onclick="MS.go('home')" title="Your songs are saved on this device. Tap for My Songs."><span id="savedNote" style="color:var(--teal)">Saved ✓</span>&nbsp;· My Songs</button>` : ''}</div>
-    <div class="row"><span class="level">Paper</span>${pp}${MS.helpBtn('paper', '?')}</div>
+    ${['studio', 'room', 'restyle', 'vocal'].includes(S.screen) ? `<div class="row"><span class="level">Paper</span>${pp}${MS.helpBtn('paper', '?')}</div>` : ''}
     <div class="row" role="group" aria-label="Music knowledge level"><span class="level">Level</span>${lv}${MS.helpBtn('level', '?')}</div>
-    <div class="row" style="gap:6px"><button class="btn sm" onclick="MS.go('words')">📖 Studio Talk</button><button class="btn sm thelp" onclick="MS.teacher.help()">❓ Help</button></div></div>`;
+    <div class="row" style="gap:6px"><button class="btn sm" onclick="MS.go('words')">📖 Studio Talk</button><button class="btn sm thelp" onclick="MS.teacher.help()">❓ Help</button>${S.screen !== 'home' && !(S.screen === 'room' && S.arg) ? `<button class="btn sm" onclick="MS.go('home')">🏠 Back to Start</button>` : ''}</div></div>`;
   };
   MS.a.level = l => { S.level = l; MS.save(); MS.render(); };
   MS.a.paper = p => { S.paper = p; MS.save(); MS.render(); };
@@ -191,28 +191,25 @@
   MS.screens.home = {
     html() {
       const has = !!S.song;
-      const LV = { Basic: 'New to music. Mr. Paul takes you one step at a time. Fewer buttons, note names shown.', Moderate: 'Know a little. Adds chords, harmony, bass, effects and the song map.', Advanced: 'Read music. Everything: full mixer, sharps and flats, dotted notes, loudness marks.' };
-      return MS.banner() + `<div class="split"><div class="main">
+      return MS.banner() + `<div class="col" style="gap:14px">
       <div class="card col"><h1 style="font-size:32px">Make your own music</h1>
-      <p style="margin:0;font-size:16px;color:#ddd8cc;max-width:720px">Write it, sing it, hear it with real instruments, then download your song. Mr. Paul, your music teacher, tells you what to do next at the bottom of every screen.</p>
+      <p style="margin:0;font-size:16px;color:#ddd8cc;max-width:760px">Write it, sing it, arrange it and produce it with real instruments, then download your song. Mr. Paul, your music teacher, tells you what to do next at the bottom of every screen.</p>
       ${has ? `<button class="btn primary" style="align-self:flex-start" onclick="MS.go('studio')">▶ Continue “${esc(S.song.title)}”</button>` : ''}
       <div class="label" style="margin-top:6px">${has ? 'Or start something new' : 'What do you want to do?'}</div>
       <div class="doors">
-        <button class="door learn" onclick="MS.go('room')"><span class="dic">🎓</span><b>Teach me music</b><span>Short lessons first: notes, rhythm, melody, chords. About 3 minutes each.</span></button>
+        <button class="door learn" onclick="MS.go('room')"><span class="dic">🎓</span><b>Teach me music</b><span>Short lessons: notes, rhythm, melody, chords, arranging and production. About 3 minutes each.</span></button>
         <button class="door song" onclick="MS.a.firstSong()"><span class="dic">🎵</span><b>Make a song with me</b><span>Mr. Paul tells you every step. Your first song in about 10 minutes.</span></button>
         <button class="door pro" onclick="MS.a.newSong()"><span class="dic">🎛</span><b>I know what I'm doing</b><span>Straight into the studio with a blank song.</span></button>
       </div>
-      <div class="row" role="group" aria-label="Your level" style="margin-top:4px"><span class="level">Your level</span>${['Basic', 'Moderate', 'Advanced'].map(l => `<button type="button" class="pill amber ${l === S.level ? 'on' : ''}" aria-pressed="${l === S.level}" onclick="MS.a.level('${l}')">${l}</button>`).join('')}</div>
-      <div class="small muted">${LV[S.level]} You can change it anytime.</div>
-      <div class="row" style="gap:8px"><button class="btn sm" onclick="MS.a.scan()">📷 Scan sheet music</button><button class="btn sm" onclick="MS.a.openFile()">Open a song file</button>${Object.keys(MS.CLASSICS).slice(0, 2).map(k => `<button class="btn sm" onclick="MS.a.classic(${esc(JSON.stringify(k))})">Start from ${esc(k.replace(/ \(.+\)$/, ''))}</button>`).join('')}</div>
+      <div class="small muted">You're on <b style="color:var(--amber)">${S.level}</b>: ${({ Basic: 'new to music. Mr. Paul takes you one step at a time to a finished song.', Moderate: 'you know some music words. Mr. Paul coaches and explains why.', Advanced: 'you know your way around. Everything is open and Mr. Paul helps when you ask.' })[S.level]} Change it anytime at the top.</div>
+      <div class="row" style="gap:8px"><button class="btn sm" onclick="MS.a.scan()">📷 Scan sheet music</button><button class="btn sm" onclick="MS.a.openFile()">Open a song file</button></div>
       </div>
       ${MS.myShelf()}
       ${MS.roomsHtml()}
       <div class="card col"><div class="label">Start from a classic</div><div class="small muted">Old songs anyone can use. Change them, restyle them, make them yours.</div>
       <div class="row">${Object.keys(MS.CLASSICS).map(k => `<button class="btn" onclick="MS.a.classic(${esc(JSON.stringify(k))})">${esc(k)}</button>`).join('')}</div></div>
-      </div><div class="side">
-      <div class="card col"><div class="label">Personal use</div><label class="row" style="align-items:flex-start;gap:10px;font-size:14px;cursor:pointer"><input type="checkbox" ${S.agreed ? 'checked' : ''} onchange="MS.a.agree(this.checked)"><span>If I sing or write out music I didn't write (from a fakebook, from memory or from any other source), it's for my own enjoyment. I won't post it on public networks or sell it.</span></label><div class="tiny muted">Needed before you restyle or enter someone else's song.</div></div>
-      </div></div>` + MS.footer();
+      <div class="card col"><div class="label">Personal use (for scanning, restyling or classics)</div><label class="row" style="align-items:flex-start;gap:10px;font-size:14px;cursor:pointer"><input type="checkbox" ${S.agreed ? 'checked' : ''} onchange="MS.a.agree(this.checked)"><span>If I sing or write out music I didn't write (from a fakebook, from memory or from any other source), it's for my own enjoyment. I won't post it on public networks or sell it.</span></label><div class="tiny muted">Needed before you restyle or enter someone else's song.</div></div>
+      </div>` + MS.footer();
     }
   };
   MS.a.agree = v => { S.agreed = v; MS.save(); };

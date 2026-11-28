@@ -188,17 +188,16 @@
   // ---------- rooms on the home page ----------
   MS.roomsHtml = function () {
     const R = [
-      ['The Music Room', 'Learn', 'Short lessons: reading notes, rhythm, melody, chords, song parts.', 'room', 'room', '#4fc3b8'],
-      ['The Studio', 'Write', 'Notes, harmony, chords, bass, drums and instruments.', 'studio', 'studio', '#f2b33d'],
+      ['The Music Room', 'Learn', 'Short lessons: notes, rhythm, melody, chords, arranging and production.', 'room', 'room', '#4fc3b8'],
+      ['The Studio', 'Write', 'Write your melody, then add chords, harmony, bass and drums.', 'studio', 'studio', '#f2b33d'],
       ['The Vocal Room', 'Sing', 'Lyrics with AI options, your voice, background singers.', 'vocal', 'vocal', '#f08a6b'],
-      ['Restyle', 'Reimagine', 'Your melody as R&B, classical, rock, jazz and more.', 'restyle', 'restyle', '#b39dfa'],
-      ['The Control Room', 'Mix', 'The engineer\'s room: background layers, build grid, mixing board, master.', 'control', 'control', '#5fa3e8'],
-      ['Save and download', 'Share', 'Sheet music, MP3, WAV and a song file.', 'save', 'save', '#7fb2ff'],
-      ['Studio Talk', 'Words', 'Music vocabulary in plain English, with sound examples.', 'words', 'rooms', '#d9d4c8']
+      ['Restyle', 'Arrange', 'Arrange your melody as R&B, classical, rock, jazz and more.', 'restyle', 'restyle', '#b39dfa'],
+      ['The Control Room', 'Mix & Produce', 'The engineer\'s room: background layers, build grid, mixing board, master.', 'control', 'control', '#5fa3e8'],
+      ['Save and download', 'Share', 'Sheet music, MP3, WAV and a song file.', 'save', 'save', '#7fb2ff']
     ];
-    return `<div class="card col"><div class="row" style="justify-content:space-between"><div class="label">Explore the rooms</div>${MS.helpBtn('rooms')}</div>
-      <div class="grid">${R.map(([t, verb, d, go, help, c]) => `<div class="opt" style="border-top:3px solid ${c}"><div class="row" style="justify-content:space-between"><b style="font-size:17px">${t}</b><span class="tiny" style="color:${c};font-weight:700;text-transform:uppercase;letter-spacing:.08em">${verb}</span></div>
-        <span class="small" style="color:#ddd8cc">${d}</span><div class="row" style="gap:6px"><button class="btn sm" onclick="MS.a.room('${go}')">Go in</button>${go !== 'words' ? MS.helpBtn(help, 'What happens here?') : ''}</div></div>`).join('')}</div></div>`;
+    return `<div class="card col"><div class="row" style="justify-content:space-between"><div><div class="label">The rooms, in the order you make a song</div><div class="tiny muted">Tap a room to go in. Your song comes with you.</div></div>${MS.helpBtn('rooms')}</div>
+      <div class="grid rooms6">${R.map(([t, verb, d, go, help, c], i) => `<div class="opt roomcard" role="button" tabindex="0" style="border-top:3px solid ${c};cursor:pointer" onclick="MS.a.room('${go}')" onkeydown="if(event.key==='Enter')MS.a.room('${go}')"><div class="row" style="justify-content:space-between"><b style="font-size:17px"><span style="color:${c}">${i + 1}</span> · ${t}</b><span class="tiny" style="color:${c};font-weight:700;text-transform:uppercase;letter-spacing:.08em">${verb}</span></div>
+        <span class="small" style="color:#ddd8cc">${d}</span><button type="button" class="linkish" onclick="event.stopPropagation();MS.help('${help}')">What happens here?</button></div>`).join('')}</div></div>`;
   };
   MS.a.room = function (go) {
     if (['studio', 'vocal', 'restyle', 'save', 'control'].includes(go) && !S.song) MS.setSong(MS.blankSong());

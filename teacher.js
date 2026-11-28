@@ -125,7 +125,7 @@
     let act = st.act;
     if (away && (!act || !/Take me|Show me/.test(act[0]))) act = ['Take me there', () => { MS.go(st.screen); setTimeout(() => T.show(), 350); }];
     if (!act && st.target) act = ['Show me', () => T.show()];
-    return { k: `STEP ${i + 1} OF ${list.length}`, n: i, total: list.length, id: st.id, say: st.say[L] || st.say.Moderate, why: L === 'Advanced' ? '' : st.why, target: away ? null : st.target, act, skip: st.skip, before: st.before };
+    return { k: L === 'Moderate' ? `COACH'S NEXT MOVE · ${i + 1} OF ${list.length}` : `STEP ${i + 1} OF ${list.length}`, n: i, total: list.length, id: st.id, say: st.say[L] || st.say.Moderate, why: L === 'Advanced' ? '' : st.why, target: away ? null : st.target, act, skip: st.skip, before: st.before };
   };
 
   // ---------- light up the button the step is about ----------
@@ -168,16 +168,30 @@
     if (!C.ideas.length) C.ideas = C.local().slice(0, 3);
     const st = T.next(), L = lvl();
     el.className = 'sugg teach' + (C.min ? ' min' : '') + ' lv-' + L.toLowerCase();
+    // Advanced: Mr. Paul stays on call and only walks you through steps when you ask
+    if (L === 'Advanced' && !T.guide) {
+      el.innerHTML = `${T.ideas && !C.min ? ideasHtml() : ''}<div class="in">
+        <button class="tface" onclick="MS.teacher.help()" aria-label="Help from Mr. Paul">${FACE}<span>Mr. Paul</span></button>
+        <div class="tmsg"><div class="tk">ON CALL</div><div class="tsay">Need a hand? Ask me anything, or let me suggest your next move.</div></div>
+        <div class="tact"><button class="btn primary" onclick="MS.teacher.help()">💬 Ask Mr. Paul</button><button class="btn" onclick="MS.teacher.guide=true;MS.coach.render()">Next move</button></div>
+        <div class="ttools"><button class="btn sm tidea ${T.ideas ? 'open' : ''}" onclick="MS.teacher.toggleIdeas()">💡 Ideas</button><button class="btn sm" onclick="MS.undo()">Undo</button><button class="btn sm ghost" onclick="MS.coach.toggle()">${C.min ? 'Show' : 'Hide'}</button></div></div>`;
+      return;
+    }
     const pct = st.total ? Math.round((st.n || 0) / st.total * 100) : 0;
-    const ideas = `<div class="tideas"><div class="row" style="justify-content:space-between;gap:8px"><b style="color:var(--violet)">💡 Ideas for “${esc(S.song ? S.song.title : 'your song')}” ${C.loading ? '…' : ''}</b><div class="row" style="gap:6px"><button class="btn sm" onclick="MS.coach.more()">3 more</button><button class="btn sm" onclick="MS.coach.ask()">Ask for an idea</button><button class="btn sm ghost" onclick="MS.teacher.toggleIdeas()">Close</button></div></div>
-      <div class="chips row" style="gap:8px">${C.ideas.map((i, k) => `<button class="chip" onclick="MS.coach.apply(${k})">${esc(i.label)}<small>${esc(i.why || '')}</small></button>`).join('')}${C.wordChip()}</div><div class="tiny muted">Tap an idea to try it. Don't like it? Press Undo.</div></div>`;
+    const ideas = ideasHtml();
+    function _unused(){ return `<div class="tideas"><div class="row" style="justify-content:space-between;gap:8px"><b style="color:var(--violet)">💡 Ideas for “${esc(S.song ? S.song.title : 'your song')}” ${C.loading ? '…' : ''}</b><div class="row" style="gap:6px"><button class="btn sm" onclick="MS.coach.more()">3 more</button><button class="btn sm" onclick="MS.coach.ask()">Ask for an idea</button><button class="btn sm ghost" onclick="MS.teacher.toggleIdeas()">Close</button></div></div>
+      <div class="chips row" style="gap:8px">${C.ideas.map((i, k) => `<button class="chip" onclick="MS.coach.apply(${k})">${esc(i.label)}<small>${esc(i.why || '')}</small></button>`).join('')}${C.wordChip()}</div><div class="tiny muted">Tap an idea to try it. Don't like it? Press Undo.</div></div>`; }
     el.innerHTML = `${T.ideas && !C.min ? ideas : ''}<div class="in">
       <button class="tface" onclick="MS.teacher.help()" aria-label="Help from Mr. Paul">${FACE}<span>Mr. Paul</span></button>
       <div class="tmsg"><div class="tk">${esc(st.k)}${st.total ? `<span class="tbar"><i style="width:${pct}%"></i></span>` : ''}</div><div class="tsay">${esc(st.say)}</div>${st.why && L !== 'Advanced' && !C.min ? `<div class="twhy">${esc(st.why)}</div>` : ''}</div>
       <div class="tact">${st.act ? `<button class="btn primary" onclick="MS.teacher.act()">${esc(st.act[0])}</button>` : ''}${st.target && !/Show me/.test(st.act ? st.act[0] : '') ? `<button class="btn" onclick="MS.teacher.show()">👆 Show me</button>` : ''}${st.skip ? `<button class="btn sm ghost" onclick="MS.teacher.skipStep()">Skip</button>` : ''}</div>
-      <div class="ttools"><button class="btn sm thelp" onclick="MS.teacher.help()">❓ Help</button><button class="btn sm tidea ${T.ideas ? 'open' : ''}" onclick="MS.teacher.toggleIdeas()">💡 Ideas</button><button class="btn sm" onclick="MS.undo()">Undo</button><button class="btn sm ghost" onclick="MS.coach.toggle()" aria-label="${C.min ? 'Show Mr. Paul' : 'Make Mr. Paul smaller'}">${C.min ? 'Show' : 'Hide'}</button></div></div>`;
+      <div class="ttools"><button class="btn sm thelp" onclick="MS.teacher.help()">❓ Help</button><button class="btn sm tidea ${T.ideas ? 'open' : ''}" onclick="MS.teacher.toggleIdeas()">💡 Ideas</button><button class="btn sm" onclick="MS.undo()">Undo</button>${L === 'Advanced' ? `<button class="btn sm ghost" onclick="MS.teacher.guide=false;MS.coach.render()">Quiet</button>` : ''}<button class="btn sm ghost" onclick="MS.coach.toggle()" aria-label="${C.min ? 'Show Mr. Paul' : 'Make Mr. Paul smaller'}">${C.min ? 'Show' : 'Hide'}</button></div></div>`;
     pulse(st);
   };
+  function ideasHtml() {
+    return `<div class="tideas"><div class="row" style="justify-content:space-between;gap:8px"><b style="color:var(--violet)">💡 Ideas for “${esc(S.song ? S.song.title : 'your song')}” ${C.loading ? '…' : ''}</b><div class="row" style="gap:6px"><button class="btn sm" onclick="MS.coach.more()">3 more</button><button class="btn sm" onclick="MS.coach.ask()">Ask for an idea</button><button class="btn sm ghost" onclick="MS.teacher.toggleIdeas()">Close</button></div></div>
+      <div class="chips row" style="gap:8px">${C.ideas.map((i, k) => `<button class="chip" onclick="MS.coach.apply(${k})">${esc(i.label)}<small>${esc(i.why || '')}</small></button>`).join('')}${C.wordChip()}</div><div class="tiny muted">Tap an idea to try it. Don't like it? Press Undo.</div></div>`;
+  }
   T.toggleIdeas = function () { T.ideas = !T.ideas; if (T.ideas) { C.min = false; if (!C.ideas.length) C.ideas = C.local().slice(0, 3); } C.render(); };
 
   // ---------- one place for help ----------
