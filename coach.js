@@ -70,6 +70,7 @@
     return out.filter(i => !C.seen.includes(i.label));
   }
 
+  C.local = localIdeas;
   C.render = function () {
     let el = document.getElementById('sugg');
     if (!el) { el = document.createElement('div'); el.id = 'sugg'; el.className = 'sugg'; el.setAttribute('role', 'region'); el.setAttribute('aria-label', 'Suggestions'); document.body.appendChild(el); }
